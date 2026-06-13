@@ -80,7 +80,7 @@ public class GraphDocumentBuilder {
             coordinate.version(),
             coordinate.type(),
             coordinate.classifier(),
-            dependencyNode.scope(),
+            depth == 0 ? "root" : dependencyNode.scope(),
             dependencyNode.optional(),
             depth,
             depth == 0,

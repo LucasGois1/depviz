@@ -18,7 +18,9 @@ class GraphDocumentBuilderTest {
 
         assertThat(document.nodes()).hasSize(1);
         assertThat(document.nodes().get(0).root()).isTrue();
+        assertThat(document.nodes().get(0).scope()).isEqualTo("root");
         assertThat(document.nodes().get(0).id()).isEqualTo("com.acme:app:jar::1.0.0");
+        assertThat(document.summary().nodesByScope()).containsEntry("root", 1);
     }
 
     @Test
