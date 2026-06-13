@@ -26,7 +26,12 @@ export function GraphCanvas({
 }: GraphCanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const cyRef = useRef<Core | null>(null);
+  const onSelectNodeRef = useRef(onSelectNode);
   const elements = useMemo(() => toCytoscapeElements(document), [document]);
+
+  useEffect(() => {
+    onSelectNodeRef.current = onSelectNode;
+  }, [onSelectNode]);
 
   useEffect(() => {
     if (!containerRef.current) {
@@ -46,11 +51,11 @@ export function GraphCanvas({
 
     cy.on("tap", (event) => {
       if (event.target === cy) {
-        onSelectNode(null);
+        onSelectNodeRef.current(null);
       }
     });
     cy.on("tap", "node", (event) => {
-      onSelectNode(event.target.id());
+      onSelectNodeRef.current(event.target.id());
     });
 
     cyRef.current = cy;
@@ -58,7 +63,7 @@ export function GraphCanvas({
       cy.destroy();
       cyRef.current = null;
     };
-  }, [elements, onSelectNode]);
+  }, [elements]);
 
   useEffect(() => {
     const cy = cyRef.current;

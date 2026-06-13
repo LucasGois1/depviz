@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { buildVisibility, createFilterState, setOptionalMode, setScopeEnabled, toggleCollapsed } from "./filtering";
 import { availableScopes, buildAdjacency } from "./graph";
@@ -51,34 +51,36 @@ export default function App() {
   const visibility = useMemo(() => buildVisibility(documentData, filters), [documentData, filters]);
   const selectedNode = selectedNodeId ? nodeById.get(selectedNodeId) ?? null : null;
 
-  function selectNode(nodeId: string | null) {
+  const selectNode = useCallback((nodeId: string | null) => {
     setSelectedNodeId(nodeId);
-  }
+  }, []);
 
-  function runViewportCommand(command: "fit" | "reset") {
+  const runViewportCommand = useCallback((command: "fit" | "reset") => {
     setViewportCommand(command);
     setCommandNonce((current) => current + 1);
-  }
+  }, []);
 
-  function updateSearch(search: string) {
+  const updateSearch = useCallback((search: string) => {
     setFilters((current) => ({ ...current, search }));
-  }
+  }, []);
 
-  function updateScope(scope: string, enabled: boolean) {
+  const updateScope = useCallback((scope: string, enabled: boolean) => {
     setFilters((current) => setScopeEnabled(current, scope, enabled));
-  }
+  }, []);
 
-  function updateOptionalMode(optionalMode: OptionalMode) {
+  const updateOptionalMode = useCallback((optionalMode: OptionalMode) => {
     setFilters((current) => setOptionalMode(current, optionalMode));
-  }
+  }, []);
 
-  function clearFilters() {
+  const clearFilters = useCallback(() => {
     setFilters(createFilterState());
-  }
+  }, []);
 
-  function toggleNodeCollapse(node: GraphNode) {
+  const toggleNodeCollapse = useCallback((node: GraphNode) => {
     setFilters((current) => toggleCollapsed(current, node.id));
-  }
+  }, []);
+  const fitGraph = useCallback(() => runViewportCommand("fit"), [runViewportCommand]);
+  const resetGraph = useCallback(() => runViewportCommand("reset"), [runViewportCommand]);
 
   return (
     <main className="app-shell">
@@ -95,8 +97,8 @@ export default function App() {
           onOptionalModeChange={updateOptionalMode}
           onLayoutChange={setLayout}
           onShowLabelsChange={setShowLabels}
-          onFit={() => runViewportCommand("fit")}
-          onReset={() => runViewportCommand("reset")}
+          onFit={fitGraph}
+          onReset={resetGraph}
           onClearFilters={clearFilters}
         />
         <div className="canvas-frame">
@@ -167,4 +169,3 @@ function normalizeLayout(layout: string): LayoutName {
   }
   return "breadthfirst";
 }
-

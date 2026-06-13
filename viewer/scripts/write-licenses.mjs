@@ -21,4 +21,4 @@ for (const dependencyName of dependencyNames) {
   lines.push(`${dependencyName}@${packageInfo?.version ?? "unknown"} - ${packageInfo?.license ?? "license metadata unavailable"}`);
 }
 
-await writeFile(resolve("../src/main/resources/depviz/assets/LICENSES.txt"), `${lines.join("\n")}\n`, "utf8");
+await writeFile(resolve("../target/generated-resources/depviz/assets/LICENSES.txt"), `${lines.join("\n")}\n`, "utf8");

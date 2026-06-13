@@ -14,9 +14,9 @@ export function buildVisibility(document: DepvizDocument, filters: FilterState):
   const nodeById = new Map(document.nodes.map((node) => [node.id, node]));
   const adjacency = buildAdjacency(document);
   const baseAllowed = new Set(
-    document.nodes.filter((node) => node.root || nodePassesFilters(node, filters)).map((node) => node.id)
+    document.nodes.filter((node) => node.root || nodePassesOptionalFilter(node, filters)).map((node) => node.id)
   );
-  const reachable = reachableFromRoots(document, filters, baseAllowed);
+  const reachable = reachableFromRoots(document, filters, baseAllowed, nodeById);
   const matchingNodeIds = matchingReachableNodes(document, filters.search, reachable);
   const visibleNodeIds = filters.search.trim()
     ? expandSearchContext(matchingNodeIds, adjacency, reachable)
@@ -56,10 +56,7 @@ export function setScopeEnabled(filters: FilterState, scope: string, enabled: bo
   return { ...filters, scopes };
 }
 
-function nodePassesFilters(node: GraphNode, filters: FilterState): boolean {
-  if (filters.scopes.size > 0 && !filters.scopes.has(node.scope)) {
-    return false;
-  }
+function nodePassesOptionalFilter(node: GraphNode, filters: FilterState): boolean {
   if (filters.optionalMode === "required" && node.optional) {
     return false;
   }
@@ -82,7 +79,12 @@ function edgePassesFilters(edge: GraphEdge, filters: FilterState): boolean {
   return true;
 }
 
-function reachableFromRoots(document: DepvizDocument, filters: FilterState, baseAllowed: Set<string>): Set<string> {
+function reachableFromRoots(
+  document: DepvizDocument,
+  filters: FilterState,
+  baseAllowed: Set<string>,
+  nodeById: Map<string, GraphNode>
+): Set<string> {
   const adjacency = buildAdjacency(document);
   const roots = document.nodes.filter((node) => node.root || node.depth === 0).map((node) => node.id);
   const visible = new Set<string>();
@@ -98,7 +100,13 @@ function reachableFromRoots(document: DepvizDocument, filters: FilterState, base
       continue;
     }
     for (const edge of adjacency.outgoingEdges.get(current) ?? []) {
-      if (!edgePassesFilters(edge, filters) || !baseAllowed.has(edge.target)) {
+      const targetNode = nodeById.get(edge.target);
+      if (
+        !edgePassesFilters(edge, filters) ||
+        !baseAllowed.has(edge.target) ||
+        !targetNode ||
+        !nodePassesOptionalFilter(targetNode, filters)
+      ) {
         continue;
       }
       queue.push(edge.target);

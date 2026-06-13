@@ -81,6 +81,44 @@ describe("buildVisibility", () => {
     );
     expect(visibility.visibleEdgeIds).toEqual(new Set(["root-core"]));
   });
+
+  it("keeps a shared dependency visible when a selected-scope edge reaches a node with a different retained scope", () => {
+    const runtimeSharedDocument: DepvizDocument = {
+      ...document,
+      summary: {
+        nodeCount: 4,
+        edgeCount: 4,
+        nodesByScope: { root: 1, compile: 3, runtime: 0 },
+        nodesByGroupId: document.summary.nodesByGroupId
+      },
+      nodes: [
+        node("dev.example:demo:jar::1.0.0", "dev.example", "demo", "1.0.0", "root", false, true),
+        node("org.alpha:adapter:jar::1.2.0", "org.alpha", "adapter", "1.2.0", "compile", false),
+        node("org.beta:runtime-adapter:jar::3.0.0", "org.beta", "runtime-adapter", "3.0.0", "runtime", false),
+        node("org.shared:core:jar::2.0.0", "org.shared", "core", "2.0.0", "compile", false)
+      ],
+      edges: [
+        edge("root-alpha", "dev.example:demo:jar::1.0.0", "org.alpha:adapter:jar::1.2.0", "compile", false),
+        edge("root-beta", "dev.example:demo:jar::1.0.0", "org.beta:runtime-adapter:jar::3.0.0", "runtime", false),
+        edge("alpha-shared", "org.alpha:adapter:jar::1.2.0", "org.shared:core:jar::2.0.0", "compile", false),
+        edge("beta-shared", "org.beta:runtime-adapter:jar::3.0.0", "org.shared:core:jar::2.0.0", "runtime", false)
+      ]
+    };
+
+    const visibility = buildVisibility(runtimeSharedDocument, {
+      ...createFilterState(),
+      scopes: new Set(["runtime"])
+    });
+
+    expect(visibility.visibleNodeIds).toEqual(
+      new Set([
+        "dev.example:demo:jar::1.0.0",
+        "org.beta:runtime-adapter:jar::3.0.0",
+        "org.shared:core:jar::2.0.0"
+      ])
+    );
+    expect(visibility.visibleEdgeIds).toEqual(new Set(["root-beta", "beta-shared"]));
+  });
 });
 
 function node(
