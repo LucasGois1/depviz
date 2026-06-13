@@ -1,0 +1,196 @@
+# Depviz Maven Plugin
+
+Depviz is a local-development Maven plugin that generates an offline interactive dependency graph viewer for a Maven project.
+
+It writes a self-contained HTML viewer plus the dependency graph JSON and static assets under the build output directory. The viewer is intended for local inspection: open the generated HTML in a browser, pan around the graph, search, filter, inspect dependency paths, and reason about shared dependencies without requiring a server or internet access.
+
+## Requirements
+
+- Maven 3.9+
+- Java 17+
+
+The runtime viewer does not require Node.js, a local server, CDN access, Graphviz, an IDE, or an internet connection. Node.js is only used when building this plugin from source because the viewer is a React/Vite application bundled into the plugin artifact.
+
+## Build Locally
+
+From this repository:
+
+```bash
+mvn -q -DskipTests=false install
+```
+
+This builds and installs `dev.gois.tools:depviz-maven-plugin:0.1.0-SNAPSHOT` into your local Maven repository.
+
+## Usage
+
+After the plugin is installed locally, run it from any Maven project you want to inspect:
+
+```bash
+mvn dev.gois.tools:depviz-maven-plugin:0.1.0-SNAPSHOT:open
+```
+
+If your Maven setup resolves the `depviz` plugin prefix, the short form is:
+
+```bash
+mvn depviz:open
+```
+
+By default, the goal generates the viewer under `target/depviz` and tries to open `target/depviz/dependency-graph.html` in your default browser.
+
+To generate the files without opening a browser:
+
+```bash
+mvn depviz:open -Ddepviz.open=false
+```
+
+## Examples
+
+Generate a compile-scope graph:
+
+```bash
+mvn depviz:open -Ddepviz.scope=compile
+```
+
+Show only dependency subtrees that include Spring artifacts:
+
+```bash
+mvn depviz:open -Ddepviz.includes=org.springframework:*
+```
+
+Exclude common test dependencies:
+
+```bash
+mvn depviz:open -Ddepviz.excludes=junit:*,org.junit:*,org.mockito:*
+```
+
+Write the viewer to a custom directory:
+
+```bash
+mvn depviz:open -Ddepviz.outputDirectory=target/custom-depviz
+```
+
+Use the fully qualified plugin coordinate when the short prefix is unavailable:
+
+```bash
+mvn dev.gois.tools:depviz-maven-plugin:0.1.0-SNAPSHOT:open -Ddepviz.open=false
+```
+
+## Configuration
+
+| Property | Accepted values | Default | Description |
+| --- | --- | --- | --- |
+| `depviz.scope` | `compile`, `runtime`, `test`, `provided`, `system`, `import`, `all` | `runtime` | Filters dependencies by Maven scope before the graph document is written. `runtime` includes compile, runtime, and unscoped dependencies. `test` includes all dependency scopes Maven exposes to the graph. |
+| `depviz.open` | `true`, `false` | `true` | Opens the generated HTML in the default browser after writing files. When `false`, files are still generated and the goal prints the HTML path/URI. |
+| `depviz.layout` | `breadthfirst`, `force`, `circle`, `concentric` | `breadthfirst` | Selects the viewer's initial graph layout. The viewer also lets you switch layouts after opening the file. |
+| `depviz.nodeMode` | `artifact` | `artifact` | Renders one node per artifact coordinate. `occurrence` mode is intentionally not implemented yet. |
+| `depviz.maxInitialLabels` | positive integer | `500` | Controls whether labels are shown when the viewer first loads. Labels start enabled when the graph has at most this many nodes. |
+| `depviz.includes` | comma-separated coordinate patterns | none | Keeps matching dependency subtrees. Patterns support `*` wildcards and must be either `groupId:artifactId` or `groupId:artifactId:type:version`. |
+| `depviz.excludes` | comma-separated coordinate patterns | none | Removes matching dependency subtrees. Patterns support `*` wildcards and must be either `groupId:artifactId` or `groupId:artifactId:type:version`. |
+| `depviz.outputDirectory` | filesystem path | `target/depviz` | Directory where the HTML, JSON, and assets are written. |
+
+Include and exclude patterns are matched segment-by-segment against dependency coordinates. For example, `org.springframework:*` matches every artifact in the `org.springframework` group, while `*:junit` matches any dependency with artifactId `junit`.
+
+## Output Files
+
+The default output tree is:
+
+```text
+target/depviz/
+  dependency-graph.html
+  dependency-graph.json
+  assets/
+    app.js
+    style.css
+    LICENSES.txt
+```
+
+- `dependency-graph.html` embeds the graph data and loads local assets from `assets/`.
+- `dependency-graph.json` is the same graph document as pretty-printed JSON for inspection or tooling.
+- `assets/` contains the bundled viewer JavaScript, CSS, and bundled dependency license notices.
+
+## Graph Semantics
+
+Depviz renders dependencies as a graph, not as a duplicated tree. Nodes are deduplicated by artifact coordinate, so a shared dependency appears as one node with multiple incoming edges from the artifacts that depend on it.
+
+The graph document also records dependency paths. This lets the viewer show how a selected artifact is reached while still preserving the graph behavior that makes shared dependencies visible as shared nodes.
+
+## Viewer Capabilities
+
+The generated viewer supports:
+
+- pan, zoom, fit, reset, and node dragging
+- search by coordinate-related fields such as groupId, artifactId, version, scope, type, classifier, label, display coordinate, and node ID
+- scope filters based on scopes present in the generated graph
+- optional dependency filtering
+- label visibility control
+- layout switching between breadth-first, force, circle, and concentric layouts
+- selected node details, direct parent and child dependencies, and collapse/expand controls
+- path-to-root inspection for selected dependencies
+- graph summary counts by scope and top group IDs
+- diagnostics when Maven dependency extraction exposes warnings or errors
+
+## Troubleshooting
+
+### `mvn depviz:open` cannot resolve the plugin prefix
+
+Use the fully qualified coordinate:
+
+```bash
+mvn dev.gois.tools:depviz-maven-plugin:0.1.0-SNAPSHOT:open
+```
+
+If the artifact is not installed locally yet, build this repository first:
+
+```bash
+mvn -q -DskipTests=false install
+```
+
+### The browser did not open
+
+The generated files may still be valid. Check the Maven output for the HTML path or open:
+
+```text
+target/depviz/dependency-graph.html
+```
+
+You can also disable browser opening explicitly:
+
+```bash
+mvn depviz:open -Ddepviz.open=false
+```
+
+### The graph is too dense
+
+Use search, scope filters, optional dependency filtering, collapse/expand, or a narrower generated graph:
+
+```bash
+mvn depviz:open -Ddepviz.scope=compile
+mvn depviz:open -Ddepviz.includes=org.springframework:*
+mvn depviz:open -Ddepviz.excludes=junit:*,org.junit:*,org.mockito:*
+```
+
+For very large graphs, labels start hidden when the node count is above `depviz.maxInitialLabels`:
+
+```bash
+mvn depviz:open -Ddepviz.maxInitialLabels=250
+```
+
+### A configuration value is rejected
+
+Check the accepted values in the configuration table. The plugin fails fast for invalid scopes, layouts, boolean values, node modes, and non-positive or non-integer label thresholds.
+
+## Security and Privacy
+
+Depviz is designed for local development. It reads dependency metadata from the Maven project being analyzed and writes generated files to the configured output directory.
+
+The generated viewer is offline: it loads local JavaScript and CSS from the generated `assets/` directory and does not need a server, CDN, or network access to render the graph.
+
+The generated JSON may include project coordinates, dependency coordinates, versions, scopes, module information, diagnostics, and the Maven project base directory. Treat `dependency-graph.json` and `dependency-graph.html` as project metadata, and do not publish them unless that metadata is acceptable to share.
+
+## Known Limitations
+
+- This is a local-development plugin and is not intended as a CI reporting system.
+- The artifact is currently `0.1.0-SNAPSHOT`, so consumers should install it locally before use.
+- Only `depviz.nodeMode=artifact` is implemented. Occurrence-mode visualization is intentionally not available yet.
+- The viewer is generated as static files; it does not persist user interactions back to Maven or the JSON file.
+- Graph quality depends on the Maven dependency graph Maven can resolve for the current project and selected scope.
