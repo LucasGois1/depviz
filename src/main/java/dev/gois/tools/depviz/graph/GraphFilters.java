@@ -17,11 +17,11 @@ public final class GraphFilters {
     ) {
         ExtractedDependencyNode scopeFiltered = filterByScope(root, scope, true);
         if (scopeFiltered == null) {
-            return root;
+            return copyWithChildren(root, List.of());
         }
         ExtractedDependencyNode excluded = filterExcludes(scopeFiltered, excludes, true);
         if (excluded == null) {
-            return root;
+            return copyWithChildren(scopeFiltered, List.of());
         }
         if (includes == null || includes.isEmpty()) {
             return excluded;
