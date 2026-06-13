@@ -1,4 +1,17 @@
-Temporary Depviz viewer assets.
+Depviz viewer bundled dependency notices
 
-These files are project-authored placeholder assets for the offline static viewer.
-They do not include third-party runtime libraries.
+This offline viewer bundles the npm packages listed below into app.js/style.css.
+License metadata is sourced from package-lock.json at build time.
+
+@radix-ui/react-select@2.3.0 - MIT
+@radix-ui/react-tabs@1.1.14 - MIT
+@types/react@19.2.17 - MIT
+@types/react-dom@19.2.3 - MIT
+@vitejs/plugin-react@5.2.0 - MIT
+cytoscape@3.34.0 - MIT
+lucide-react@0.556.0 - ISC
+react@19.2.7 - MIT
+react-dom@19.2.7 - MIT
+typescript@5.9.3 - Apache-2.0
+vite@7.3.5 - MIT
+vitest@4.1.8 - MIT
