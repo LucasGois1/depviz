@@ -1,0 +1,4 @@
+Temporary Depviz viewer assets.
+
+These files are project-authored placeholder assets for the offline static viewer.
+They do not include third-party runtime libraries.

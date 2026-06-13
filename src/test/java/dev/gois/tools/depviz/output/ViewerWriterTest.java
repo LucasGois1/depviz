@@ -1,0 +1,40 @@
+package dev.gois.tools.depviz.output;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import dev.gois.tools.depviz.config.DepvizConfig;
+import dev.gois.tools.depviz.graph.ArtifactCoordinate;
+import dev.gois.tools.depviz.graph.ExtractedDependencyNode;
+import dev.gois.tools.depviz.graph.GraphDocument;
+import dev.gois.tools.depviz.graph.GraphDocumentBuilder;
+import dev.gois.tools.depviz.graph.ProjectInfo;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
+class ViewerWriterTest {
+    @TempDir
+    Path tempDir;
+
+    @Test
+    void writesHtmlJsonAndAssetsWithoutCdnReferences() throws Exception {
+        DepvizConfig config = DepvizConfig.fromRaw(null, "false", null, null, null, null, null, tempDir);
+        GraphDocument document = new GraphDocumentBuilder().build(
+            new ExtractedDependencyNode(new ArtifactCoordinate("com.acme", "app", "jar", "", "1.0.0"), "compile", false, List.of(), List.of()),
+            new ProjectInfo("com.acme", "app", "1.0.0", "jar", "app", ".", false, List.of()),
+            config
+        );
+
+        OutputFiles files = new ViewerWriter().write(document, config.outputDirectory());
+
+        assertThat(Files.exists(files.htmlFile())).isTrue();
+        assertThat(Files.exists(files.jsonFile())).isTrue();
+        String html = Files.readString(files.htmlFile());
+        assertThat(html).contains("id=\"graph-root\"");
+        assertThat(html).doesNotContain("https://");
+        assertThat(html).doesNotContain("http://");
+        assertThat(Files.exists(files.outputDirectory().resolve("assets/app.js"))).isTrue();
+    }
+}
