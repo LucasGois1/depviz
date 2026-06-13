@@ -34,7 +34,7 @@ public final class MavenDependencyGraphExtractor implements DependencyGraphExtra
             DependencyNode resolvedRoot = dependencyGraphBuilder.buildDependencyGraph(buildingRequest(project), null);
             ExtractedDependencyNode root = new ExtractedDependencyNode(
                 projectCoordinate(project),
-                scope(project.getArtifact()),
+                "root",
                 optional(project.getArtifact()),
                 resolvedRoot.getChildren().stream().map(this::toExtractedNode).toList(),
                 List.of()

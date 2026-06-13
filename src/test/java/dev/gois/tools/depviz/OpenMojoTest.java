@@ -24,6 +24,10 @@ class OpenMojoTest {
         assertThat(text(openMojo, "goal")).isEqualTo("open");
         assertThat(text(openMojo, "requiresProject")).isEqualTo("true");
         assertThat(text(openMojo, "threadSafe")).isEqualTo("true");
+        Node outputDirectory = node(openMojo, "parameters/parameter[name='outputDirectory']");
+        assertThat(outputDirectory).isNotNull();
+        assertThat(text(openMojo, "configuration/outputDirectory/@default-value"))
+            .isEqualTo("${project.build.directory}/depviz");
 
         Method execute = OpenMojo.class.getMethod("execute");
         assertThat(execute.getReturnType()).isEqualTo(Void.TYPE);

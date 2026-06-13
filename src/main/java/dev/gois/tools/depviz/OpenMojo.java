@@ -50,7 +50,7 @@ public final class OpenMojo extends AbstractMojo {
     @Parameter(property = "depviz.maxInitialLabels")
     private String maxInitialLabels;
 
-    @Parameter(property = "depviz.outputDirectory")
+    @Parameter(property = "depviz.outputDirectory", defaultValue = "${project.build.directory}/depviz")
     private File outputDirectory;
 
     @Override
