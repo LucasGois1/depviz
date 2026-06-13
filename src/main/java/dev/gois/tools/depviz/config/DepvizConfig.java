@@ -25,7 +25,7 @@ public record DepvizConfig(
         DepvizScope parsedScope = DepvizScope.parse(scope);
         DepvizLayout parsedLayout = DepvizLayout.parse(layout);
         NodeMode parsedNodeMode = NodeMode.parse(nodeMode);
-        boolean parsedOpen = open == null || open.isBlank() || Boolean.parseBoolean(open);
+        boolean parsedOpen = parseOpen(open);
         int parsedMaxInitialLabels = parseMaxInitialLabels(maxInitialLabels);
         Path resolvedOutputDirectory = outputDirectory == null ? Path.of("target", "depviz") : outputDirectory;
         return new DepvizConfig(
@@ -53,6 +53,20 @@ public record DepvizConfig(
         } catch (NumberFormatException exception) {
             throw new IllegalArgumentException("depviz.maxInitialLabels must be an integer.", exception);
         }
+    }
+
+    private static boolean parseOpen(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return true;
+        }
+        String normalized = raw.trim();
+        if ("true".equalsIgnoreCase(normalized)) {
+            return true;
+        }
+        if ("false".equalsIgnoreCase(normalized)) {
+            return false;
+        }
+        throw new IllegalArgumentException("depviz.open must be true or false.");
     }
 
     private static String blankToNull(String raw) {
