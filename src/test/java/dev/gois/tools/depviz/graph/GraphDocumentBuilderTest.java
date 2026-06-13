@@ -1,9 +1,11 @@
 package dev.gois.tools.depviz.graph;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 import dev.gois.tools.depviz.config.DepvizConfig;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -52,6 +54,21 @@ class GraphDocumentBuilderTest {
     }
 
     @Test
+    void preservesSameSourceAndTargetEdgesWithDifferentMetadata() {
+        ExtractedDependencyNode compileShared = node("org.slf4j", "slf4j-api", "2.0.13", "compile", false);
+        ExtractedDependencyNode runtimeShared = node("org.slf4j", "slf4j-api", "2.0.13", "runtime", false);
+        ExtractedDependencyNode optionalShared = node("org.slf4j", "slf4j-api", "2.0.13", "compile", true);
+        ExtractedDependencyNode root = node("com.acme", "app", "1.0.0", compileShared, runtimeShared, optionalShared);
+
+        GraphDocument document = new GraphDocumentBuilder().build(root, projectInfo(), config);
+
+        assertThat(document.edges())
+            .filteredOn(edge -> edge.target().equals("org.slf4j:slf4j-api:jar::2.0.13"))
+            .extracting(edge -> edge.scope() + ":" + edge.optional())
+            .containsExactlyInAnyOrder("compile:false", "runtime:false", "compile:true");
+    }
+
+    @Test
     void computesShortestDepth() {
         ExtractedDependencyNode shared = node("org.slf4j", "slf4j-api", "2.0.13");
         ExtractedDependencyNode root = node("com.acme", "app", "1.0.0",
@@ -80,7 +97,116 @@ class GraphDocumentBuilderTest {
 
         assertThat(document.paths())
             .filteredOn(path -> path.target().equals("org.slf4j:slf4j-api:jar::2.0.13"))
-            .hasSize(2);
+            .extracting(GraphPath::nodeIds)
+            .containsExactlyInAnyOrder(
+                List.of(
+                    "com.acme:app:jar::1.0.0",
+                    "com.acme:feature-a:jar::1.0.0",
+                    "org.slf4j:slf4j-api:jar::2.0.13"
+                ),
+                List.of(
+                    "com.acme:app:jar::1.0.0",
+                    "com.acme:feature-b:jar::1.0.0",
+                    "org.slf4j:slf4j-api:jar::2.0.13"
+                )
+            );
+    }
+
+    @Test
+    void stopsTraversalWhenCoordinateCycleReentersActivePath() {
+        ExtractedDependencyNode cycleRootOccurrence = node(
+            "com.acme",
+            "app",
+            "1.0.0",
+            node("com.acme", "after-cycle", "1.0.0")
+        );
+        ExtractedDependencyNode lib = node("com.acme", "lib", "1.0.0", cycleRootOccurrence);
+        ExtractedDependencyNode root = node("com.acme", "app", "1.0.0", lib);
+
+        GraphDocument document = new GraphDocumentBuilder().build(root, projectInfo(), config);
+
+        assertThat(document.edges())
+            .anySatisfy(edge -> {
+                assertThat(edge.source()).isEqualTo("com.acme:lib:jar::1.0.0");
+                assertThat(edge.target()).isEqualTo("com.acme:app:jar::1.0.0");
+            });
+        assertThat(document.paths())
+            .anySatisfy(path -> assertThat(path.nodeIds()).containsExactly(
+                "com.acme:app:jar::1.0.0",
+                "com.acme:lib:jar::1.0.0",
+                "com.acme:app:jar::1.0.0"
+            ));
+        assertThat(document.nodes())
+            .extracting(GraphNode::id)
+            .doesNotContain("com.acme:after-cycle:jar::1.0.0");
+    }
+
+    @Test
+    void mapsViewerConfigFromDepvizConfig() {
+        DepvizConfig customConfig = DepvizConfig.fromRaw(null, "false", null, "force", null, "42", null, Path.of("target/depviz"));
+        ExtractedDependencyNode root = node("com.acme", "app", "1.0.0");
+
+        GraphDocument document = new GraphDocumentBuilder().build(root, projectInfo(), customConfig);
+
+        assertThat(document.viewerConfig()).isEqualTo(new ViewerConfig("force", 42, "artifact"));
+    }
+
+    @Test
+    void summarizesNodesEdgesGroupsAndScopes() {
+        ExtractedDependencyNode root = node("com.acme", "app", "1.0.0",
+            node("com.acme", "feature", "1.0.0"),
+            node("org.slf4j", "slf4j-api", "2.0.13", "runtime", false)
+        );
+
+        GraphDocument document = new GraphDocumentBuilder().build(root, projectInfo(), config);
+
+        assertThat(document.summary().nodeCount()).isEqualTo(3);
+        assertThat(document.summary().edgeCount()).isEqualTo(2);
+        assertThat(document.summary().nodesByScope()).containsEntry("root", 1).containsEntry("compile", 1).containsEntry("runtime", 1);
+        assertThat(document.summary().nodesByGroupId()).containsEntry("com.acme", 2).containsEntry("org.slf4j", 1);
+    }
+
+    @Test
+    void carriesDiagnosticsIntoDocument() {
+        ExtractedDependencyNode root = node(
+            "com.acme",
+            "app",
+            "1.0.0",
+            "compile",
+            false,
+            List.of(new DiagnosticEntry("warning", "version", "Version was inferred.", null))
+        );
+
+        GraphDocument document = new GraphDocumentBuilder().build(root, projectInfo(), config);
+
+        assertThat(document.diagnostics())
+            .containsExactly(new DiagnosticEntry("warning", "version", "Version was inferred.", "com.acme:app:jar::1.0.0"));
+    }
+
+    @Test
+    void exposesImmutableCollections() {
+        List<ExtractedDependencyNode> children = new ArrayList<>();
+        children.add(node("com.acme", "lib", "1.0.0"));
+        ExtractedDependencyNode root = new ExtractedDependencyNode(
+            new ArtifactCoordinate("com.acme", "app", "jar", "", "1.0.0"),
+            "compile",
+            false,
+            children,
+            List.of()
+        );
+        children.add(node("com.acme", "late", "1.0.0"));
+
+        GraphDocument document = new GraphDocumentBuilder().build(root, projectInfo(), config);
+
+        assertThat(document.nodes())
+            .extracting(GraphNode::id)
+            .doesNotContain("com.acme:late:jar::1.0.0");
+        assertThatExceptionOfType(UnsupportedOperationException.class)
+            .isThrownBy(() -> document.nodes().add(document.nodes().get(0)));
+        assertThatExceptionOfType(UnsupportedOperationException.class)
+            .isThrownBy(() -> document.paths().get(0).nodeIds().add("other"));
+        assertThatExceptionOfType(UnsupportedOperationException.class)
+            .isThrownBy(() -> document.summary().nodesByScope().put("other", 1));
     }
 
     private static ProjectInfo projectInfo() {
@@ -88,12 +214,28 @@ class GraphDocumentBuilderTest {
     }
 
     private static ExtractedDependencyNode node(String groupId, String artifactId, String version, ExtractedDependencyNode... children) {
+        return node(groupId, artifactId, version, "compile", false, List.of(), children);
+    }
+
+    private static ExtractedDependencyNode node(String groupId, String artifactId, String version, String scope, boolean optional, ExtractedDependencyNode... children) {
+        return node(groupId, artifactId, version, scope, optional, List.of(), children);
+    }
+
+    private static ExtractedDependencyNode node(
+        String groupId,
+        String artifactId,
+        String version,
+        String scope,
+        boolean optional,
+        List<DiagnosticEntry> diagnostics,
+        ExtractedDependencyNode... children
+    ) {
         return new ExtractedDependencyNode(
             new ArtifactCoordinate(groupId, artifactId, "jar", "", version),
-            "compile",
-            false,
+            scope,
+            optional,
             List.of(children),
-            List.of()
+            diagnostics
         );
     }
 }

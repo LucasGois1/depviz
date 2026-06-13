@@ -5,9 +5,11 @@ import dev.gois.tools.depviz.util.Coordinates;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 
 public class GraphDocumentBuilder {
     public static final String SCHEMA_VERSION = "1.0";
@@ -18,7 +20,7 @@ public class GraphDocumentBuilder {
         Objects.requireNonNull(config, "config is required.");
 
         BuilderState state = new BuilderState();
-        visit(root, null, 0, List.of(), state);
+        visit(root, null, 0, List.of(), new LinkedHashSet<>(), state);
 
         List<GraphNode> nodes = List.copyOf(state.nodes.values());
         List<GraphEdge> edges = List.copyOf(state.edges.values());
@@ -40,6 +42,28 @@ public class GraphDocumentBuilder {
         String parentId,
         int depth,
         List<String> parentPath,
+        Set<String> activePath,
+        BuilderState state
+    ) {
+        List<String> currentPath = recordOccurrence(current, parentId, depth, parentPath, state);
+        Set<String> nextActivePath = new LinkedHashSet<>(activePath);
+        nextActivePath.add(Coordinates.stableId(current.coordinate()));
+
+        for (ExtractedDependencyNode child : current.children()) {
+            String childId = Coordinates.stableId(child.coordinate());
+            if (nextActivePath.contains(childId)) {
+                recordOccurrence(child, Coordinates.stableId(current.coordinate()), depth + 1, currentPath, state);
+                continue;
+            }
+            visit(child, Coordinates.stableId(current.coordinate()), depth + 1, currentPath, nextActivePath, state);
+        }
+    }
+
+    private List<String> recordOccurrence(
+        ExtractedDependencyNode current,
+        String parentId,
+        int depth,
+        List<String> parentPath,
         BuilderState state
     ) {
         ArtifactCoordinate coordinate = current.coordinate();
@@ -56,7 +80,7 @@ public class GraphDocumentBuilder {
 
         if (parentId != null) {
             GraphEdge edge = new GraphEdge(
-                parentId + "->" + currentId,
+                edgeId(parentId, currentId, current.scope(), current.optional()),
                 parentId,
                 currentId,
                 current.scope(),
@@ -66,9 +90,7 @@ public class GraphDocumentBuilder {
             state.edges.putIfAbsent(edge.id(), edge);
         }
 
-        for (ExtractedDependencyNode child : current.children()) {
-            visit(child, currentId, depth + 1, currentPath, state);
-        }
+        return currentPath;
     }
 
     private static GraphNode toGraphNode(ExtractedDependencyNode dependencyNode, String id, int depth) {
@@ -96,6 +118,21 @@ public class GraphDocumentBuilder {
         path.addAll(parentPath);
         path.add(id);
         return path;
+    }
+
+    private static String edgeId(String source, String target, String scope, boolean optional) {
+        return escape(source) + "->" + escape(target) + "[" + escape(scope) + "|" + optional + "]";
+    }
+
+    private static String escape(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value
+            .replace("\\", "\\\\")
+            .replace("|", "\\|")
+            .replace("[", "\\[")
+            .replace("]", "\\]");
     }
 
     private static List<DiagnosticEntry> withNodeId(List<DiagnosticEntry> diagnostics, String nodeId) {
