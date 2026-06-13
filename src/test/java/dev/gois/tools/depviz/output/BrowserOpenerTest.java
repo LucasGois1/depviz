@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 
 class BrowserOpenerTest {
     @Test
-    void doesNotThrowWhenDesktopIsUnavailable() {
+    void doesNotThrowWhenOpeningIsDisabled() {
         BrowserOpener opener = new BrowserOpener(false);
 
         assertThatCode(() -> opener.open(URI.create("file:///tmp/dependency-graph.html"))).doesNotThrowAnyException();

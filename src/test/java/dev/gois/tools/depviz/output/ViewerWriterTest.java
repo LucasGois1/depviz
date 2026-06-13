@@ -18,6 +18,8 @@ class ViewerWriterTest {
     @TempDir
     Path tempDir;
 
+    private static final String MALICIOUS_TEXT = "</ScRiPt><script>alert(1)</script>";
+
     @Test
     void writesHtmlJsonAndAssetsWithoutCdnReferences() throws Exception {
         DepvizConfig config = DepvizConfig.fromRaw(null, "false", null, null, null, null, null, tempDir);
@@ -36,5 +38,27 @@ class ViewerWriterTest {
         assertThat(html).doesNotContain("https://");
         assertThat(html).doesNotContain("http://");
         assertThat(Files.exists(files.outputDirectory().resolve("assets/app.js"))).isTrue();
+    }
+
+    @Test
+    void escapesMaliciousInlineJsonPayload() throws Exception {
+        DepvizConfig config = DepvizConfig.fromRaw(null, "false", null, null, null, null, null, tempDir);
+        GraphDocument document = new GraphDocumentBuilder().build(
+            new ExtractedDependencyNode(new ArtifactCoordinate("com.acme", MALICIOUS_TEXT, "jar", "", "1.0.0"), "compile", false, List.of(), List.of()),
+            new ProjectInfo("com.acme", MALICIOUS_TEXT, "1.0.0", "jar", MALICIOUS_TEXT, ".", false, List.of()),
+            config
+        );
+
+        OutputFiles files = new ViewerWriter().write(document, config.outputDirectory());
+
+        String html = Files.readString(files.htmlFile());
+        String dataBlock = html.substring(
+            html.indexOf("<script id=\"depviz-data\""),
+            html.indexOf("<script src=\"assets/app.js\"></script>")
+        );
+        assertThat(dataBlock).doesNotContain(MALICIOUS_TEXT);
+        assertThat(dataBlock).doesNotContain("</ScRiPt>");
+        assertThat(dataBlock).doesNotContain("<script>alert(1)");
+        assertThat(dataBlock).containsOnlyOnce("</script>");
     }
 }

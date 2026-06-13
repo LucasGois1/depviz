@@ -7,6 +7,6 @@ public final class JsonEscaper {
     }
 
     public static String forInlineScript(String json) {
-        return Objects.requireNonNull(json, "json is required.").replace("</", "<\\/");
+        return Objects.requireNonNull(json, "json is required.").replace("<", "\\u003C");
     }
 }
