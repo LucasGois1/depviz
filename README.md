@@ -51,7 +51,7 @@ Generate a compile-scope graph:
 mvn depviz:open -Ddepviz.scope=compile
 ```
 
-Show only dependency subtrees that include Spring artifacts:
+Show only dependency paths and branches that contain Spring artifacts:
 
 ```bash
 mvn depviz:open -Ddepviz.includes=org.springframework:*
@@ -84,7 +84,7 @@ mvn dev.gois.tools:depviz-maven-plugin:0.1.0-SNAPSHOT:open -Ddepviz.open=false
 | `depviz.layout` | `breadthfirst`, `force`, `circle`, `concentric` | `breadthfirst` | Selects the viewer's initial graph layout. The viewer also lets you switch layouts after opening the file. |
 | `depviz.nodeMode` | `artifact` | `artifact` | Renders one node per artifact coordinate. `occurrence` mode is intentionally not implemented yet. |
 | `depviz.maxInitialLabels` | positive integer | `500` | Controls whether labels are shown when the viewer first loads. Labels start enabled when the graph has at most this many nodes. |
-| `depviz.includes` | comma-separated coordinate patterns | none | Keeps matching dependency subtrees. Patterns support `*` wildcards and must be either `groupId:artifactId` or `groupId:artifactId:type:version`. |
+| `depviz.includes` | comma-separated coordinate patterns | none | Keeps paths and branches containing matching dependencies, then prunes nonmatching descendants. Patterns support `*` wildcards and must be either `groupId:artifactId` or `groupId:artifactId:type:version`. |
 | `depviz.excludes` | comma-separated coordinate patterns | none | Removes matching dependency subtrees. Patterns support `*` wildcards and must be either `groupId:artifactId` or `groupId:artifactId:type:version`. |
 | `depviz.outputDirectory` | filesystem path | `target/depviz` | Directory where the HTML, JSON, and assets are written. |
 
