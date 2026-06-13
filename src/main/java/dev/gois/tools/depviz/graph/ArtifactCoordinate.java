@@ -1,5 +1,9 @@
 package dev.gois.tools.depviz.graph;
 
+/**
+ * Immutable dependency coordinate. When built from Maven artifacts, {@code version} should be the Maven baseVersion so
+ * snapshot coordinates remain stable across timestamped resolved versions.
+ */
 public record ArtifactCoordinate(
     String groupId,
     String artifactId,

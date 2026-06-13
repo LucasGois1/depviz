@@ -3,15 +3,15 @@ package dev.gois.tools.depviz.util;
 import dev.gois.tools.depviz.graph.ArtifactCoordinate;
 import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Pattern;
 
 public record PatternMatcher(String groupId, String artifactId, String type, String version) {
     public static List<PatternMatcher> parseList(String raw) {
         if (raw == null || raw.isBlank()) {
             return List.of();
         }
-        return Arrays.stream(raw.split(","))
+        return Arrays.stream(raw.split(",", -1))
             .map(String::trim)
-            .filter(value -> !value.isEmpty())
             .map(PatternMatcher::parse)
             .toList();
     }
@@ -46,6 +46,13 @@ public record PatternMatcher(String groupId, String artifactId, String type, Str
     }
 
     private static boolean segmentMatches(String pattern, String value) {
-        return "*".equals(pattern) || pattern.equals(value);
+        if (!pattern.contains("*")) {
+            return pattern.equals(value);
+        }
+        String regex = Arrays.stream(pattern.split("\\*", -1))
+            .map(Pattern::quote)
+            .reduce((left, right) -> left + ".*" + right)
+            .orElse("");
+        return value.matches(regex);
     }
 }

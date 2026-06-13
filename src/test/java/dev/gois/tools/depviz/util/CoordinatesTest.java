@@ -33,4 +33,28 @@ class CoordinatesTest {
 
         assertThat(Coordinates.label(coordinate)).isEqualTo("org.slf4j:slf4j-api\n2.0.13");
     }
+
+    @Test
+    void normalizesBlankTypeClassifierAndVersion() {
+        ArtifactCoordinate coordinate = new ArtifactCoordinate(" org.example ", " demo ", " ", " tests ", " 1.0.0-SNAPSHOT ");
+
+        assertThat(coordinate.groupId()).isEqualTo("org.example");
+        assertThat(coordinate.artifactId()).isEqualTo("demo");
+        assertThat(coordinate.type()).isEqualTo("jar");
+        assertThat(coordinate.classifier()).isEqualTo("tests");
+        assertThat(coordinate.version()).isEqualTo("1.0.0-SNAPSHOT");
+    }
+
+    @Test
+    void storesProvidedVersionWithoutSnapshotTimestampConversion() {
+        ArtifactCoordinate coordinate = new ArtifactCoordinate(
+            "org.example",
+            "demo",
+            "jar",
+            "",
+            "1.0.0-20240613.120000-1"
+        );
+
+        assertThat(coordinate.version()).isEqualTo("1.0.0-20240613.120000-1");
+    }
 }
