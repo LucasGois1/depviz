@@ -21,4 +21,13 @@ assert !externalCssUrl.matcher(html).find() : "HTML should not load CSS assets o
 def json = new JsonSlurper().parse(jsonFile)
 def artifactIds = json.nodes.collect { it.artifactId } as Set
 assert artifactIds.contains("simple-project") : "JSON should include the sample project node"
-assert artifactIds.contains("slf4j-api") : "JSON should include the slf4j-api dependency node"
+assert artifactIds.contains("spring-webmvc") : "JSON should include the spring-webmvc dependency node"
+assert artifactIds.contains("spring-jdbc") : "JSON should include the spring-jdbc dependency node"
+assert artifactIds.contains("spring-core") : "JSON should include the shared spring-core dependency node"
+
+def incomingByTarget = json.edges.groupBy { it.target }
+def sharedNodes = json.nodes.findAll { node ->
+    (incomingByTarget[node.id] ?: []).collect { it.source }.toSet().size() > 1
+}
+assert sharedNodes.any { it.artifactId == "spring-core" } :
+    "Expected spring-core to be one shared node with multiple incoming edges"

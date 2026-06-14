@@ -9,19 +9,19 @@ import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.project.DefaultProjectBuildingRequest;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.project.ProjectBuildingRequest;
-import org.apache.maven.shared.dependency.graph.DependencyGraphBuilder;
-import org.apache.maven.shared.dependency.graph.DependencyGraphBuilderException;
+import org.apache.maven.shared.dependency.graph.DependencyCollectorBuilder;
+import org.apache.maven.shared.dependency.graph.DependencyCollectorBuilderException;
 import org.apache.maven.shared.dependency.graph.DependencyNode;
 
 public final class MavenDependencyGraphExtractor implements DependencyGraphExtractor {
     private static final String FAILURE_PREFIX = "Failed to resolve Maven dependency graph: ";
 
-    private final DependencyGraphBuilder dependencyGraphBuilder;
+    private final DependencyCollectorBuilder dependencyCollectorBuilder;
 
-    public MavenDependencyGraphExtractor(DependencyGraphBuilder dependencyGraphBuilder) {
-        this.dependencyGraphBuilder = Objects.requireNonNull(
-            dependencyGraphBuilder,
-            "dependencyGraphBuilder is required."
+    public MavenDependencyGraphExtractor(DependencyCollectorBuilder dependencyCollectorBuilder) {
+        this.dependencyCollectorBuilder = Objects.requireNonNull(
+            dependencyCollectorBuilder,
+            "dependencyCollectorBuilder is required."
         );
     }
 
@@ -31,7 +31,7 @@ public final class MavenDependencyGraphExtractor implements DependencyGraphExtra
         Objects.requireNonNull(config, "config is required.");
 
         try {
-            DependencyNode resolvedRoot = dependencyGraphBuilder.buildDependencyGraph(buildingRequest(project), null);
+            DependencyNode resolvedRoot = dependencyCollectorBuilder.collectDependencyGraph(buildingRequest(project), null);
             ExtractedDependencyNode root = new ExtractedDependencyNode(
                 projectCoordinate(project),
                 "root",
@@ -45,7 +45,7 @@ public final class MavenDependencyGraphExtractor implements DependencyGraphExtra
                 PatternMatcher.parseList(config.includes()),
                 PatternMatcher.parseList(config.excludes())
             );
-        } catch (DependencyGraphBuilderException | IllegalArgumentException exception) {
+        } catch (DependencyCollectorBuilderException | IllegalArgumentException exception) {
             throw new MojoExecutionException(FAILURE_PREFIX + exception.getMessage(), exception);
         }
     }

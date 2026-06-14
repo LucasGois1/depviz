@@ -19,7 +19,7 @@ import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
-import org.apache.maven.shared.dependency.graph.DependencyGraphBuilder;
+import org.apache.maven.shared.dependency.graph.DependencyCollectorBuilder;
 
 @Mojo(name = "open", requiresProject = true, threadSafe = true)
 public final class OpenMojo extends AbstractMojo {
@@ -27,7 +27,7 @@ public final class OpenMojo extends AbstractMojo {
     private MavenProject project;
 
     @Component
-    private DependencyGraphBuilder dependencyGraphBuilder;
+    private DependencyCollectorBuilder dependencyCollectorBuilder;
 
     @Parameter(property = "depviz.scope")
     private String scope;
@@ -56,7 +56,7 @@ public final class OpenMojo extends AbstractMojo {
     @Override
     public void execute() throws MojoExecutionException {
         DepvizConfig config = parseConfig();
-        ExtractedDependencyNode root = new MavenDependencyGraphExtractor(dependencyGraphBuilder).extract(project, config);
+        ExtractedDependencyNode root = new MavenDependencyGraphExtractor(dependencyCollectorBuilder).extract(project, config);
         GraphDocument document = new GraphDocumentBuilder().build(root, projectInfo(), config);
         OutputFiles outputFiles = write(document, config);
         URI htmlUri = outputFiles.htmlFile().toAbsolutePath().normalize().toUri();

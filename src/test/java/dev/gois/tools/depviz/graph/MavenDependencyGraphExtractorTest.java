@@ -19,7 +19,7 @@ class MavenDependencyGraphExtractorTest {
         MavenProject project = new MavenProject();
         project.setArtifact(projectArtifact());
 
-        MavenDependencyGraphExtractor extractor = new MavenDependencyGraphExtractor((request, filter) ->
+        MavenDependencyGraphExtractor extractor = new MavenDependencyGraphExtractor(request ->
             new TestDependencyNode(project.getArtifact())
         );
 
