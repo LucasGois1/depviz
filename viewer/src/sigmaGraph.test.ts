@@ -247,11 +247,24 @@ describe("applySigmaGraphState", () => {
     expect(graph.getEdgeAttribute("root-alpha", "color")).toContain("rgba");
   });
 
-  it("forces every label when all labels are enabled", () => {
+  it("shows deep current labels without forcing them when all labels are enabled", () => {
     const deepNodeId = "org.gamma:deep-helper:jar::1.0.0";
     const deepDocument: DepvizDocument = {
       ...document,
-      nodes: [...document.nodes, node(deepNodeId, "org.gamma", "deep-helper", false, 2)],
+      nodes: [
+        ...document.nodes,
+        {
+          ...node(deepNodeId, "org.gamma", "deep-helper", false, 2),
+          versionInsight: {
+            currentVersion: "1.0.0",
+            latestVersion: "1.0.0",
+            updateType: "none",
+            status: "current",
+            checked: true,
+            message: null
+          }
+        }
+      ],
       edges: [...document.edges, edge("alpha-deep", "org.alpha:client:jar::1.0.0", deepNodeId, 2)]
     };
     const graph = toSigmaGraph(deepDocument, "force");
@@ -265,7 +278,8 @@ describe("applySigmaGraphState", () => {
     applySigmaGraphState(graph, { adjacency, visibility, selectedNodeId: null, showLabels: true });
 
     expect(graph.nodes().every((id) => graph.getNodeAttribute(id, "label") === graph.getNodeAttribute(id, "baseLabel"))).toBe(true);
-    expect(graph.nodes().every((id) => graph.getNodeAttribute(id, "forceLabel"))).toBe(true);
+    expect(graph.getNodeAttribute(deepNodeId, "label")).toBe("deep-helper");
+    expect(graph.getNodeAttribute(deepNodeId, "forceLabel")).toBe(false);
   });
 });
 

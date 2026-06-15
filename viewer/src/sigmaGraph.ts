@@ -117,13 +117,14 @@ export function applySigmaGraphState(graph: SigmaDependencyGraph, params: SigmaG
     const matched = visibility.matchingNodeIds.has(nodeId);
     const keyLabel = attributes.root || attributes.shared || attributes.depth <= 1;
     const versionLabel = attributes.versionStatus === "outdated" || attributes.versionStatus === "unavailable";
-    const forceLabel = showLabels || selected || matched || keyLabel || versionLabel;
+    const forceLabel = selected || matched || keyLabel || versionLabel;
+    const labelVisible = showLabels || forceLabel;
 
     graph.mergeNodeAttributes(nodeId, {
       hidden: !visible,
       highlighted: selected || matched,
       color: dimmed ? "rgba(148, 163, 184, 0.24)" : matched && !selected ? "#f59e0b" : attributes.baseColor,
-      label: forceLabel ? attributes.baseLabel : "",
+      label: labelVisible ? attributes.baseLabel : "",
       forceLabel,
       size: selected ? Math.max(attributes.baseSize + 3, 12) : attributes.baseSize,
       zIndex: selected ? 30 : attributes.shared ? 12 : attributes.root ? 20 : 1

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AlertTriangle, Boxes, GitFork, Info } from "lucide-react";
-import type { Adjacency, DepvizDocument, FilterState, GraphNode, VisibilityState } from "../types";
+import type { Adjacency, DepvizDocument, FilterState, GraphNode, VersionSummary, VisibilityState } from "../types";
 import { DetailsPanel } from "./DetailsPanel";
 import { DiagnosticsPanel } from "./DiagnosticsPanel";
 import { PathsPanel } from "./PathsPanel";
@@ -57,11 +57,9 @@ export function Sidebar({
         </div>
         {document.versionSummary?.enabled ? (
           <div className="version-summary" aria-label="Version summary">
-            <SummaryStat label="Outdated" value={document.versionSummary.outdated} />
-            <SummaryStat label="Major" value={document.versionSummary.major} />
-            <SummaryStat label="Minor" value={document.versionSummary.minor} />
-            <SummaryStat label="Patch" value={document.versionSummary.patch} />
-            <SummaryStat label="Unavailable" value={document.versionSummary.unavailable} />
+            {versionSummaryStats(document.versionSummary).map((stat) => (
+              <SummaryStat key={stat.label} label={stat.label} value={stat.value} />
+            ))}
           </div>
         ) : null}
         <div className="top-groups">
@@ -114,4 +112,15 @@ function SummaryStat({ label, value }: { label: string; value: number }) {
       <strong>{value.toLocaleString()}</strong>
     </div>
   );
+}
+
+export function versionSummaryStats(summary: VersionSummary): Array<{ label: string; value: number }> {
+  return [
+    { label: "Outdated", value: summary.outdated },
+    { label: "Major", value: summary.major },
+    { label: "Minor", value: summary.minor },
+    { label: "Patch", value: summary.patch },
+    { label: "Unknown", value: summary.unknown },
+    { label: "Unavailable", value: summary.unavailable }
+  ];
 }

@@ -131,7 +131,7 @@ function VersionSection({ insight }: { insight: VersionInsight }) {
   );
 }
 
-function versionStatusText(insight: VersionInsight): string {
+export function versionStatusText(insight: VersionInsight): string {
   if (insight.status === "current") {
     return "current";
   }
@@ -144,10 +144,7 @@ function versionStatusText(insight: VersionInsight): string {
   return "unchecked";
 }
 
-function versionUpdateText(insight: VersionInsight): string {
-  if (insight.status === "unavailable") {
-    return "unavailable";
-  }
+export function versionUpdateText(insight: VersionInsight): string {
   return insight.updateType === "none" ? "none" : insight.updateType;
 }
 
