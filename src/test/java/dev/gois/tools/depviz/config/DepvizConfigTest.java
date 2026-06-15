@@ -68,6 +68,63 @@ class DepvizConfigTest {
     }
 
     @Test
+    void defaultsSnykToAutoAndAllProjectsToFalse() {
+        DepvizConfig config = DepvizConfig.fromRaw(null, null, null, null, null, null, null, null);
+
+        assertThat(config.snykMode()).isEqualTo(SnykMode.AUTO);
+        assertThat(config.snykJson()).isNull();
+        assertThat(config.snykCommand()).isEqualTo("snyk");
+        assertThat(config.snykOrg()).isNull();
+        assertThat(config.snykAllProjects()).isFalse();
+    }
+
+    @Test
+    void parsesSnykModeValues() {
+        assertThat(DepvizConfig.fromRaw(null, null, null, null, null, null, null, null, tempDir, "auto", null, null, null, null).snykMode())
+            .isEqualTo(SnykMode.AUTO);
+        assertThat(DepvizConfig.fromRaw(null, null, null, null, null, null, null, null, tempDir, "true", null, null, null, null).snykMode())
+            .isEqualTo(SnykMode.TRUE);
+        assertThat(DepvizConfig.fromRaw(null, null, null, null, null, null, null, null, tempDir, "false", null, null, null, null).snykMode())
+            .isEqualTo(SnykMode.FALSE);
+    }
+
+    @Test
+    void parsesSnykOptionalFields() {
+        DepvizConfig config = DepvizConfig.fromRaw(
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            tempDir,
+            "auto",
+            "/tmp/snyk.json",
+            "/opt/bin/snyk",
+            "my-org",
+            "true"
+        );
+
+        assertThat(config.snykJson()).isEqualTo(Path.of("/tmp/snyk.json"));
+        assertThat(config.snykCommand()).isEqualTo("/opt/bin/snyk");
+        assertThat(config.snykOrg()).isEqualTo("my-org");
+        assertThat(config.snykAllProjects()).isTrue();
+    }
+
+    @Test
+    void rejectsInvalidSnykModeAndAllProjects() {
+        assertThatThrownBy(() -> DepvizConfig.fromRaw(null, null, null, null, null, null, null, null, tempDir, "enabled", null, null, null, null))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("depviz.snyk");
+
+        assertThatThrownBy(() -> DepvizConfig.fromRaw(null, null, null, null, null, null, null, null, tempDir, "auto", null, null, null, "sometimes"))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("depviz.snykAllProjects");
+    }
+
+    @Test
     void parsesCheckUpdatesCaseInsensitiveBoolean() {
         DepvizConfig enabled = DepvizConfig.fromRaw(null, null, null, null, null, null, null, "TrUe", tempDir);
         DepvizConfig disabled = DepvizConfig.fromRaw(null, null, null, null, null, null, null, "false", tempDir);

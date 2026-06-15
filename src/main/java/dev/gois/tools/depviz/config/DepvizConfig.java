@@ -11,7 +11,12 @@ public record DepvizConfig(
     NodeMode nodeMode,
     int maxInitialLabels,
     boolean checkUpdates,
-    Path outputDirectory
+    Path outputDirectory,
+    SnykMode snykMode,
+    Path snykJson,
+    String snykCommand,
+    String snykOrg,
+    boolean snykAllProjects
 ) {
     public static DepvizConfig fromRaw(
         String scope,
@@ -37,6 +42,40 @@ public record DepvizConfig(
         String checkUpdates,
         Path outputDirectory
     ) {
+        return fromRaw(
+            scope,
+            open,
+            includes,
+            layout,
+            nodeMode,
+            maxInitialLabels,
+            excludes,
+            checkUpdates,
+            outputDirectory,
+            null,
+            null,
+            null,
+            null,
+            null
+        );
+    }
+
+    public static DepvizConfig fromRaw(
+        String scope,
+        String open,
+        String includes,
+        String layout,
+        String nodeMode,
+        String maxInitialLabels,
+        String excludes,
+        String checkUpdates,
+        Path outputDirectory,
+        String snyk,
+        String snykJson,
+        String snykCommand,
+        String snykOrg,
+        String snykAllProjects
+    ) {
         DepvizScope parsedScope = DepvizScope.parse(scope);
         DepvizLayout parsedLayout = DepvizLayout.parse(layout);
         NodeMode parsedNodeMode = NodeMode.parse(nodeMode);
@@ -53,8 +92,35 @@ public record DepvizConfig(
             parsedNodeMode,
             parsedMaxInitialLabels,
             parsedCheckUpdates,
-            resolvedOutputDirectory
+            resolvedOutputDirectory,
+            SnykMode.parse(snyk),
+            blankPath(snykJson),
+            defaultSnykCommand(snykCommand),
+            blankToNull(snykOrg),
+            parseSnykAllProjects(snykAllProjects)
         );
+    }
+
+    private static boolean parseSnykAllProjects(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return false;
+        }
+        if ("true".equalsIgnoreCase(raw.trim())) {
+            return true;
+        }
+        if ("false".equalsIgnoreCase(raw.trim())) {
+            return false;
+        }
+        throw new IllegalArgumentException("depviz.snykAllProjects must be true or false.");
+    }
+
+    private static Path blankPath(String raw) {
+        return raw == null || raw.isBlank() ? null : Path.of(raw.trim());
+    }
+
+    private static String defaultSnykCommand(String raw) {
+        String value = blankToNull(raw);
+        return value == null ? "snyk" : value;
     }
 
     private static boolean parseCheckUpdates(String raw) {
