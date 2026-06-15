@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildAdjacency, toCytoscapeElements } from "./graph";
+import { buildAdjacency, hasSharedDependencies, recommendedInitialLayout, shouldShowAllLabelsInitially, toCytoscapeElements } from "./graph";
 import type { DepvizDocument } from "./types";
 
 const sharedTargetId = "org.shared:logging:jar::2.0.0";
@@ -66,6 +66,26 @@ describe("toCytoscapeElements", () => {
       root: true
     });
   });
+
+  it("marks shared dependencies with fan-in metadata for canvas styling", () => {
+    const elements = toCytoscapeElements(document);
+    const shared = elements.find((element) => element.group === "nodes" && element.data.id === sharedTargetId);
+    const root = elements.find((element) => element.group === "nodes" && element.data.id === "dev.example:demo:jar::1.0.0");
+    const edgeToShared = elements.find((element) => element.group === "edges" && element.data.id === "alpha-shared");
+
+    expect(shared?.data).toMatchObject({
+      fanIn: 2,
+      shared: true
+    });
+    expect(shared?.classes?.split(" ")).toContain("shared");
+    expect(edgeToShared?.data).toMatchObject({
+      targetFanIn: 2,
+      sharedTarget: true
+    });
+    expect(edgeToShared?.classes?.split(" ")).toContain("to-shared");
+    expect(root?.data.fanIn).toBe(0);
+    expect(root?.classes?.split(" ")).not.toContain("shared");
+  });
 });
 
 describe("buildAdjacency", () => {
@@ -76,6 +96,44 @@ describe("buildAdjacency", () => {
       new Set(["org.alpha:client:jar::1.0.0", "org.beta:service:jar::1.0.0"])
     );
     expect(adjacency.children.get("org.alpha:client:jar::1.0.0")).toEqual(new Set([sharedTargetId]));
+  });
+});
+
+describe("hasSharedDependencies", () => {
+  it("detects real graph convergence when multiple packages point at one dependency", () => {
+    expect(hasSharedDependencies(document)).toBe(true);
+  });
+
+  it("does not treat a simple tree as shared", () => {
+    expect(hasSharedDependencies({ ...document, edges: document.edges.slice(0, 2) })).toBe(false);
+  });
+});
+
+describe("recommendedInitialLayout", () => {
+  it("uses force layout for graphs with shared dependencies", () => {
+    expect(recommendedInitialLayout(document, "breadthfirst")).toBe("force");
+  });
+
+  it("keeps the configured layout when the graph has no shared dependencies", () => {
+    expect(recommendedInitialLayout({ ...document, edges: document.edges.slice(0, 2) }, "breadthfirst")).toBe("breadthfirst");
+  });
+
+  it("keeps an explicit non-hierarchical layout even when dependencies are shared", () => {
+    expect(recommendedInitialLayout(document, "circle")).toBe("circle");
+  });
+});
+
+describe("shouldShowAllLabelsInitially", () => {
+  it("starts with key labels only when the graph has shared dependencies", () => {
+    expect(shouldShowAllLabelsInitially(document)).toBe(false);
+  });
+
+  it("shows all labels for small tree-shaped graphs", () => {
+    expect(shouldShowAllLabelsInitially({ ...document, edges: document.edges.slice(0, 2) })).toBe(true);
+  });
+
+  it("starts with key labels only when the graph exceeds the configured label limit", () => {
+    expect(shouldShowAllLabelsInitially({ ...document, viewerConfig: { ...document.viewerConfig, maxInitialLabels: 2 } })).toBe(false);
   });
 });
 

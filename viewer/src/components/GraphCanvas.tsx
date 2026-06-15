@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import cytoscape, { type Core, type ElementDefinition, type SingularElementArgument, type StylesheetCSS } from "cytoscape";
+import { cytoscapeHslColor } from "../cytoscapeStyle";
 import { toCytoscapeElements } from "../graph";
 import type { DepvizDocument, LayoutName, VisibilityState } from "../types";
 
@@ -132,21 +133,21 @@ function layoutOptions(layout: LayoutName) {
     return {
       name: "cose",
       animate: false,
-      nodeRepulsion: 9000,
-      idealEdgeLength: 92,
-      componentSpacing: 70,
-      padding: 54
+      nodeRepulsion: 14000,
+      idealEdgeLength: 118,
+      componentSpacing: 88,
+      padding: 36
     };
   }
   if (layout === "circle") {
-    return { name: "circle", animate: false, padding: 58 };
+    return { name: "circle", animate: false, padding: 38 };
   }
   if (layout === "concentric") {
     return {
       name: "concentric",
       animate: false,
-      padding: 58,
-      concentric: (node: SingularElementArgument) => Math.max(1, 8 - Number(node.data("depth") ?? 0)),
+      padding: 38,
+      concentric: (node: SingularElementArgument) => Math.max(Number(node.data("fanIn") ?? 0) * 3, 8 - Number(node.data("depth") ?? 0)),
       levelWidth: () => 2
     };
   }
@@ -154,8 +155,8 @@ function layoutOptions(layout: LayoutName) {
     name: "breadthfirst",
     directed: true,
     animate: false,
-    spacingFactor: 1.35,
-    padding: 58
+    spacingFactor: 1.62,
+    padding: 38
   };
 }
 
@@ -164,23 +165,23 @@ function stylesheet(showLabels: boolean): StylesheetCSS[] {
     {
       selector: "node",
       css: {
-        width: 34,
-        height: 34,
-        "background-color": (element: SingularElementArgument) => `hsl(${element.data("hue")} 58% 46%)`,
+        width: nodeSize,
+        height: nodeSize,
+        "background-color": (element: SingularElementArgument) => cytoscapeHslColor(Number(element.data("hue") ?? 0)),
         "border-width": 2,
         "border-color": "rgba(255,255,255,0.9)",
         "font-family": "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
-        "font-size": 10,
+        "font-size": 10.5,
         "font-weight": 650,
         color: "#0f172a",
-        label: showLabels ? "data(label)" : "",
+        label: (element: SingularElementArgument) => nodeLabel(element, showLabels),
         "text-background-color": "rgba(255,255,255,0.88)",
-        "text-background-opacity": showLabels ? 1 : 0,
+        "text-background-opacity": (element: SingularElementArgument) => (nodeLabel(element, showLabels) ? 1 : 0),
         "text-background-padding": "4px",
         "text-background-shape": "roundrectangle",
         "text-margin-y": 8,
         "text-wrap": "wrap",
-        "text-max-width": "120px",
+        "text-max-width": "136px",
         "overlay-opacity": 0
       }
     },
@@ -195,6 +196,22 @@ function stylesheet(showLabels: boolean): StylesheetCSS[] {
       }
     },
     {
+      selector: "node.shared",
+      css: {
+        "border-width": 4,
+        "border-color": "#0f766e",
+        "z-index": 8
+      }
+    },
+    {
+      selector: "node.hub",
+      css: {
+        "border-width": 5,
+        "border-color": "#b45309",
+        "z-index": 10
+      }
+    },
+    {
       selector: "node.optional",
       css: {
         "border-style": "dashed"
@@ -203,14 +220,24 @@ function stylesheet(showLabels: boolean): StylesheetCSS[] {
     {
       selector: "edge",
       css: {
-        width: 1.6,
+        width: 1.7,
         "curve-style": "bezier",
         "target-arrow-shape": "triangle",
         "target-arrow-color": "#64748b",
         "line-color": "#94a3b8",
-        opacity: 0.72,
+        opacity: 0.76,
         "arrow-scale": 0.9,
         "overlay-opacity": 0
+      }
+    },
+    {
+      selector: "edge.to-shared",
+      css: {
+        width: (element: SingularElementArgument) => Math.min(3.4, 1.7 + Number(element.data("targetFanIn") ?? 0) * 0.22),
+        "line-color": "#0f766e",
+        "target-arrow-color": "#0f766e",
+        opacity: 0.9,
+        "z-index": 6
       }
     },
     {
@@ -229,7 +256,7 @@ function stylesheet(showLabels: boolean): StylesheetCSS[] {
     {
       selector: ".is-dimmed",
       css: {
-        opacity: 0.13
+        opacity: 0.24
       }
     },
     {
@@ -250,8 +277,8 @@ function stylesheet(showLabels: boolean): StylesheetCSS[] {
       css: {
         "border-color": "#020617",
         "border-width": 5,
-        width: 48,
-        height: 48,
+        width: 54,
+        height: 54,
         "z-index": 20
       }
     },
@@ -265,4 +292,17 @@ function stylesheet(showLabels: boolean): StylesheetCSS[] {
       }
     }
   ];
+}
+
+function nodeSize(element: SingularElementArgument): number {
+  const fanIn = Number(element.data("fanIn") ?? 0);
+  return Math.min(66, 34 + fanIn * 4);
+}
+
+function nodeLabel(element: SingularElementArgument, showLabels: boolean): string {
+  if (showLabels) {
+    return String(element.data("label") ?? "");
+  }
+  const isKeyNode = Boolean(element.data("root")) || Boolean(element.data("shared")) || Number(element.data("depth") ?? 0) <= 1;
+  return isKeyNode ? String(element.data("label") ?? "") : "";
 }

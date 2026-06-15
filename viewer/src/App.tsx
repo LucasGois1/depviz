@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { buildVisibility, createFilterState, setOptionalMode, setScopeEnabled, toggleCollapsed } from "./filtering";
-import { availableScopes, buildAdjacency } from "./graph";
+import { availableScopes, buildAdjacency, recommendedInitialLayout, shouldShowAllLabelsInitially } from "./graph";
 import type { DepvizDocument, FilterState, GraphNode, LayoutName, OptionalMode } from "./types";
 import { GraphCanvas } from "./components/GraphCanvas";
 import { Sidebar } from "./components/Sidebar";
@@ -39,9 +39,9 @@ const fallbackDocument: DepvizDocument = {
 export default function App() {
   const documentData = useMemo(readEmbeddedDocument, []);
   const [filters, setFilters] = useState<FilterState>(() => createFilterState());
-  const [layout, setLayout] = useState<LayoutName>(normalizeLayout(documentData.viewerConfig.initialLayout));
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(() => documentData.nodes.find((node) => node.root)?.id ?? null);
-  const [showLabels, setShowLabels] = useState(documentData.nodes.length <= documentData.viewerConfig.maxInitialLabels);
+  const [layout, setLayout] = useState<LayoutName>(() => recommendedInitialLayout(documentData, normalizeLayout(documentData.viewerConfig.initialLayout)));
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [showLabels, setShowLabels] = useState(() => shouldShowAllLabelsInitially(documentData));
   const [viewportCommand, setViewportCommand] = useState<"fit" | "reset" | null>(null);
   const [commandNonce, setCommandNonce] = useState(0);
 

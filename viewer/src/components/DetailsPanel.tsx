@@ -1,5 +1,6 @@
 import { Check, ChevronRight, Clipboard, Package, Split, X } from "lucide-react";
 import { useState } from "react";
+import { copyTextToClipboard, type ClipboardCopyState } from "../clipboard";
 import type { Adjacency, FilterState, GraphNode } from "../types";
 import { Button } from "./ui/button";
 
@@ -13,7 +14,7 @@ interface DetailsPanelProps {
 }
 
 export function DetailsPanel({ adjacency, nodeById, selectedNode, filters, onSelectNode, onToggleCollapse }: DetailsPanelProps) {
-  const [copied, setCopied] = useState(false);
+  const [copyState, setCopyState] = useState<ClipboardCopyState | "idle">("idle");
 
   if (!selectedNode) {
     return (
@@ -33,9 +34,9 @@ export function DetailsPanel({ adjacency, nodeById, selectedNode, filters, onSel
     if (!selectedNode) {
       return;
     }
-    await navigator.clipboard?.writeText(selectedNode.coordinate);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1200);
+    const nextState = await copyTextToClipboard(selectedNode.coordinate, navigator.clipboard);
+    setCopyState(nextState);
+    window.setTimeout(() => setCopyState("idle"), 1400);
   }
 
   return (
@@ -47,12 +48,29 @@ export function DetailsPanel({ adjacency, nodeById, selectedNode, filters, onSel
           <p>{selectedNode.coordinate}</p>
         </div>
         <div className="header-actions">
-          <Button variant="outline" size="icon" onClick={copyCoordinate} title="Copy coordinate">
-            {copied ? <Check aria-hidden="true" /> : <Clipboard aria-hidden="true" />}
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={copyCoordinate}
+            title={copyState === "blocked" ? "Clipboard permission blocked" : "Copy coordinate"}
+            aria-label="Copy coordinate"
+          >
+            {copyState === "copied" ? <Check aria-hidden="true" /> : <Clipboard aria-hidden="true" />}
           </Button>
-          <Button variant={collapsed ? "secondary" : "outline"} size="icon" onClick={() => onToggleCollapse(selectedNode)} title="Collapse or expand outgoing branch">
+          <Button
+            variant={collapsed ? "secondary" : "outline"}
+            size="icon"
+            onClick={() => onToggleCollapse(selectedNode)}
+            title="Collapse or expand outgoing branch"
+            aria-label={collapsed ? "Expand outgoing branch" : "Collapse outgoing branch"}
+          >
             {collapsed ? <ChevronRight aria-hidden="true" /> : <Split aria-hidden="true" />}
           </Button>
+          {copyState !== "idle" ? (
+            <span className={`copy-feedback copy-feedback-${copyState}`} role="status">
+              {copyState === "copied" ? "Copied" : "Copy blocked"}
+            </span>
+          ) : null}
         </div>
       </section>
 
@@ -72,6 +90,7 @@ export function DetailsPanel({ adjacency, nodeById, selectedNode, filters, onSel
 
       <section className="node-flags">
         {selectedNode.optional ? <Flag tone="warning" label="optional" /> : <Flag tone="success" label="required" />}
+        {parents.length > 1 ? <Flag tone="neutral" label={`${parents.length} parents`} /> : null}
         {selectedNode.root ? <Flag tone="neutral" label="root" /> : null}
         {selectedNode.moduleRoot ? <Flag tone="neutral" label="module root" /> : null}
         {collapsed ? <Flag tone="warning" label="collapsed" /> : null}

@@ -92,17 +92,17 @@ export function Toolbar({
           ))}
         </Select>
 
-        <Button variant="outline" size="sm" onClick={() => onShowLabelsChange(!showLabels)} title="Toggle labels">
+        <Button variant="outline" size="sm" onClick={() => onShowLabelsChange(!showLabels)} title="Toggle all labels">
           {showLabels ? <Eye aria-hidden="true" data-icon="inline-start" /> : <EyeOff aria-hidden="true" data-icon="inline-start" />}
-          Labels
+          All labels
         </Button>
-        <Button variant="outline" size="icon" onClick={onFit} title="Fit graph">
+        <Button variant="outline" size="icon" onClick={onFit} title="Fit graph" aria-label="Fit graph">
           <Maximize2 aria-hidden="true" />
         </Button>
-        <Button variant="outline" size="icon" onClick={onReset} title="Reset layout">
+        <Button variant="outline" size="icon" onClick={onReset} title="Reset layout" aria-label="Reset layout">
           <RotateCcw aria-hidden="true" />
         </Button>
-        <Button variant="ghost" size="icon" onClick={onClearFilters} title="Clear filters">
+        <Button variant="ghost" size="icon" onClick={onClearFilters} title="Clear filters" aria-label="Clear filters">
           <FilterX aria-hidden="true" />
         </Button>
       </div>

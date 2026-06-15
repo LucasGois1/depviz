@@ -7,6 +7,7 @@ export interface CytoscapeElement {
 }
 
 export function toCytoscapeElements(document: DepvizDocument): CytoscapeElement[] {
+  const fanInByNodeId = dependencyFanIn(document);
   const nodeElements = document.nodes.map((node) => ({
     group: "nodes" as const,
     data: {
@@ -24,12 +25,16 @@ export function toCytoscapeElements(document: DepvizDocument): CytoscapeElement[
       root: node.root,
       moduleRoot: node.moduleRoot,
       groupColorKey: node.groupColorKey,
+      fanIn: fanInByNodeId.get(node.id) ?? 0,
+      shared: (fanInByNodeId.get(node.id) ?? 0) > 1,
       hue: colorHue(node.groupColorKey)
     },
     classes: [
       node.root ? "root" : "",
       node.moduleRoot ? "module-root" : "",
       node.optional ? "optional" : "",
+      (fanInByNodeId.get(node.id) ?? 0) > 1 ? "shared" : "",
+      (fanInByNodeId.get(node.id) ?? 0) >= 4 ? "hub" : "",
       `scope-${safeClassName(node.scope)}`
     ]
       .filter(Boolean)
@@ -44,12 +49,35 @@ export function toCytoscapeElements(document: DepvizDocument): CytoscapeElement[
       target: edge.target,
       scope: edge.scope,
       optional: edge.optional,
-      depth: edge.depth
+      depth: edge.depth,
+      targetFanIn: fanInByNodeId.get(edge.target) ?? 0,
+      sharedTarget: (fanInByNodeId.get(edge.target) ?? 0) > 1
     },
-    classes: [edge.optional ? "optional" : "", `scope-${safeClassName(edge.scope)}`].filter(Boolean).join(" ")
+    classes: [
+      edge.optional ? "optional" : "",
+      (fanInByNodeId.get(edge.target) ?? 0) > 1 ? "to-shared" : "",
+      `scope-${safeClassName(edge.scope)}`
+    ]
+      .filter(Boolean)
+      .join(" ")
   }));
 
   return [...nodeElements, ...edgeElements];
+}
+
+export function hasSharedDependencies(document: DepvizDocument): boolean {
+  return [...dependencyFanIn(document).values()].some((fanIn) => fanIn > 1);
+}
+
+export function recommendedInitialLayout(document: DepvizDocument, configuredLayout: LayoutName): LayoutName {
+  if (configuredLayout === "breadthfirst" && hasSharedDependencies(document)) {
+    return "force";
+  }
+  return configuredLayout;
+}
+
+export function shouldShowAllLabelsInitially(document: DepvizDocument): boolean {
+  return document.nodes.length <= document.viewerConfig.maxInitialLabels && !hasSharedDependencies(document);
 }
 
 export function buildAdjacency(document: DepvizDocument): Adjacency {
@@ -79,6 +107,23 @@ export function buildAdjacency(document: DepvizDocument): Adjacency {
   }
 
   return { parents, children, incomingEdges, outgoingEdges };
+}
+
+function dependencyFanIn(document: DepvizDocument): Map<string, number> {
+  const incomingSources = new Map<string, Set<string>>();
+
+  for (const node of document.nodes) {
+    incomingSources.set(node.id, new Set());
+  }
+
+  for (const edge of document.edges) {
+    if (!incomingSources.has(edge.target)) {
+      incomingSources.set(edge.target, new Set());
+    }
+    incomingSources.get(edge.target)?.add(edge.source);
+  }
+
+  return new Map([...incomingSources.entries()].map(([nodeId, sources]) => [nodeId, sources.size]));
 }
 
 export function nodeSearchText(node: GraphNode): string {
