@@ -171,7 +171,7 @@ describe("toSigmaGraph", () => {
     expect(graph.getNodeAttribute(currentNodeId, "forceLabel")).toBe(true);
   });
 
-  it("keeps hub node sizes compact enough for the canvas", () => {
+  it("preserves pre-badge node sizing semantics", () => {
     const hubDocument: DepvizDocument = {
       ...document,
       nodes: [
@@ -183,9 +183,10 @@ describe("toSigmaGraph", () => {
     };
 
     const graph = toSigmaGraph(hubDocument, "force");
-    const largestBaseSize = Math.max(...graph.nodes().map((id) => graph.getNodeAttribute(id, "baseSize")));
 
-    expect(largestBaseSize).toBeLessThanOrEqual(12);
+    expect(graph.getNodeAttribute("dev.example:demo:jar::1.0.0", "baseSize")).toBe(10.5);
+    expect(graph.getNodeAttribute("org.parent:parent-0:jar::1.0.0", "baseSize")).toBe(7);
+    expect(graph.getNodeAttribute(sharedTargetId, "baseSize")).toBe(19);
   });
 
   it("keeps shared dependencies in a readable central band without overlapping primary nodes", () => {

@@ -147,7 +147,7 @@ export function applySigmaGraphState(graph: SigmaDependencyGraph, params: SigmaG
 function toSigmaNodeAttributes(node: GraphNode, fanIn: number): SigmaNodeAttributes {
   const shared = fanIn > 1;
   const hub = fanIn >= 4;
-  const baseSize = node.root ? 8.5 : shared ? Math.min(12, 8.8 + fanIn * 0.3) : 6;
+  const baseSize = node.root ? 10.5 : shared ? Math.min(19, 9 + fanIn * 1.8) : 7;
   const baseColor = node.root ? "#111827" : hub ? "#b45309" : shared ? "#0f766e" : groupColor(node.groupColorKey);
   const canvasLabel = compactCanvasLabel(node);
   const updateBadge = badgeTextForVersionInsight(node.versionInsight ?? null) ?? undefined;

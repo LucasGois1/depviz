@@ -8,7 +8,7 @@ export const sigmaRendererSettings = {
   enableEdgeEvents: false,
   hideEdgesOnMove: false,
   hideLabelsOnMove: false,
-  itemSizesReference: "screen",
+  itemSizesReference: "positions",
   labelColor: { color: "#0f172a" },
   labelDensity: 0.16,
   labelFont: "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",

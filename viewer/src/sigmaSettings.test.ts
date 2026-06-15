@@ -3,8 +3,8 @@ import { sigmaRendererSettings } from "./sigmaSettings";
 import { drawDependencyNodeLabel } from "./sigmaLabelRenderer";
 
 describe("sigmaRendererSettings", () => {
-  it("uses screen-space node sizes so compact layouts do not become giant blobs", () => {
-    expect(sigmaRendererSettings.itemSizesReference).toBe("screen");
+  it("keeps renderer node sizing tied to graph positions", () => {
+    expect(sigmaRendererSettings.itemSizesReference).toBe("positions");
   });
 
   it("keeps enough viewport padding for labels near the canvas edge", () => {
