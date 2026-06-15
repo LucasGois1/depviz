@@ -33,28 +33,21 @@ export const drawDependencyNodeLabel: NodeLabelDrawingFunction<SigmaNodeAttribut
   const label = String(data.label);
 
   context.font = `${weight} ${size}px ${font}`;
-  context.lineWidth = 4;
-  context.lineJoin = "round";
-  context.strokeStyle = "rgba(248, 250, 252, 0.94)";
   context.fillStyle = color ?? "#0f172a";
 
-  const gap = Math.max(data.size + 5, 11);
-  const textWidth = context.measureText(label).width;
-  const side = labelSideForCanvasPosition(data.x, context.canvas.width);
-  const x = side === "left" ? data.x - gap - textWidth : data.x + gap;
+  const x = data.x + data.size + 3;
   const y = data.y + size / 3;
   const badge = versionBadgeForNode(data as Partial<SigmaNodeAttributes>);
 
-  context.strokeText(label, x, y);
   context.fillText(label, x, y);
 
   if (badge) {
+    const textWidth = context.measureText(label).width;
     drawBadge(context, {
       badge,
       labelX: x,
       labelY: y,
       labelWidth: textWidth,
-      side,
       size,
       font,
       weight
@@ -121,13 +114,12 @@ function drawBadge(
     labelX: number;
     labelY: number;
     labelWidth: number;
-    side: "left" | "right";
     size: number;
     font: string;
     weight: string;
   }
 ): void {
-  const { badge, font, labelWidth, labelX, labelY, side, size, weight } = params;
+  const { badge, font, labelWidth, labelX, labelY, size, weight } = params;
   const badgeFontSize = Math.max(9, size - 2);
   const horizontalPadding = 6;
   const height = Math.max(16, badgeFontSize + 7);
@@ -135,7 +127,7 @@ function drawBadge(
 
   context.font = `${weight} ${badgeFontSize}px ${font}`;
   const badgeWidth = Math.max(18, context.measureText(badge.text).width + horizontalPadding * 2);
-  const x = side === "left" ? labelX - gap - badgeWidth : labelX + labelWidth + gap;
+  const x = labelX + labelWidth + gap;
   const y = labelY - height + 4;
   const radius = height / 2;
 

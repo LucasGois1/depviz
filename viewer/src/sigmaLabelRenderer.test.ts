@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { badgeColorForUpdate, badgeTextForVersionInsight, labelSideForCanvasPosition, versionBadgeForNode } from "./sigmaLabelRenderer";
+import { describe, expect, it, vi } from "vitest";
+import { badgeColorForUpdate, badgeTextForVersionInsight, drawDependencyNodeLabel, labelSideForCanvasPosition, versionBadgeForNode } from "./sigmaLabelRenderer";
 import type { SigmaNodeAttributes } from "./sigmaGraph";
 import type { VersionInsight } from "./types";
 
@@ -61,6 +61,37 @@ describe("versionBadgeForNode", () => {
   });
 });
 
+describe("drawDependencyNodeLabel", () => {
+  it("draws unbadged labels at base Sigma coordinates without a stroke outline", () => {
+    const context = canvasContext();
+
+    drawDependencyNodeLabel(
+      context,
+      { label: "client", x: 100, y: 50, size: 7 } as SigmaNodeAttributes,
+      labelSettings()
+    );
+
+    expect(context.fillText).toHaveBeenCalledWith("client", 110, 54);
+    expect(context.strokeText).not.toHaveBeenCalled();
+  });
+
+  it("draws a badge pill and badge text for badged labels", () => {
+    const context = canvasContext();
+
+    drawDependencyNodeLabel(
+      context,
+      { label: "client", x: 100, y: 50, size: 7, updateType: "major", updateBadge: "M" } as SigmaNodeAttributes,
+      labelSettings()
+    );
+
+    expect(context.fillText).toHaveBeenCalledWith("client", 110, 54);
+    expect(context.beginPath).toHaveBeenCalled();
+    expect(context.fill).toHaveBeenCalled();
+    expect(context.stroke).toHaveBeenCalled();
+    expect(context.fillText).toHaveBeenCalledWith("M", expect.any(Number), expect.any(Number));
+  });
+});
+
 function insight(updateType: VersionInsight["updateType"], status: VersionInsight["status"]): VersionInsight {
   return {
     currentVersion: "1.0.0",
@@ -70,4 +101,36 @@ function insight(updateType: VersionInsight["updateType"], status: VersionInsigh
     checked: true,
     message: null
   };
+}
+
+function labelSettings() {
+  return {
+    labelSize: 12,
+    labelFont: "Inter",
+    labelWeight: "650",
+    labelColor: { color: "#0f172a" }
+  } as Parameters<typeof drawDependencyNodeLabel>[2];
+}
+
+function canvasContext() {
+  return {
+    canvas: { width: 800 },
+    measureText: vi.fn((text: string) => ({ width: text.length * 6 })),
+    strokeText: vi.fn(),
+    fillText: vi.fn(),
+    beginPath: vi.fn(),
+    moveTo: vi.fn(),
+    lineTo: vi.fn(),
+    quadraticCurveTo: vi.fn(),
+    closePath: vi.fn(),
+    fill: vi.fn(),
+    stroke: vi.fn(),
+    font: "",
+    lineWidth: 0,
+    lineJoin: "round",
+    strokeStyle: "",
+    fillStyle: "",
+    textAlign: "start",
+    textBaseline: "alphabetic"
+  } as unknown as CanvasRenderingContext2D;
 }
