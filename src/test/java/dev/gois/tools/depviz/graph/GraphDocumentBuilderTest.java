@@ -4,9 +4,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 import dev.gois.tools.depviz.config.DepvizConfig;
+import dev.gois.tools.depviz.version.VersionCheckResult;
+import dev.gois.tools.depviz.version.VersionInsight;
+import dev.gois.tools.depviz.version.VersionSummary;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class GraphDocumentBuilderTest {
@@ -23,6 +27,41 @@ class GraphDocumentBuilderTest {
         assertThat(document.nodes().get(0).scope()).isEqualTo("root");
         assertThat(document.nodes().get(0).id()).isEqualTo("com.acme:app:jar::1.0.0");
         assertThat(document.summary().nodesByScope()).containsEntry("root", 1);
+    }
+
+    @Test
+    void existingBuilderOverloadUsesEmptyVersionSummary() {
+        DepvizConfig disabledUpdates = DepvizConfig.fromRaw(null, "false", null, null, null, null, null, "false", Path.of("target/depviz"));
+        ExtractedDependencyNode root = node("com.acme", "app", "1.0.0");
+
+        GraphDocument document = new GraphDocumentBuilder().build(root, projectInfo(), disabledUpdates);
+
+        assertThat(document.versionSummary()).isEqualTo(VersionSummary.disabled());
+        assertThat(document.nodes())
+            .extracting(GraphNode::versionInsight)
+            .containsExactly((VersionInsight) null);
+    }
+
+    @Test
+    void attachesVersionInsightAndSummaryWhenVersionCheckIsSupplied() {
+        ExtractedDependencyNode dependency = node("org.example", "lib", "1.0.0");
+        ExtractedDependencyNode root = node("com.acme", "app", "1.0.0", dependency);
+        VersionInsight insight = new VersionInsight("1.0.0", "1.0.1", "patch", "outdated", true, "Patch update available.");
+        VersionSummary summary = new VersionSummary(true, 1, 0, 1, 1, 0, 0, 0, 0);
+        VersionCheckResult versionCheck = new VersionCheckResult(
+            Map.of("org.example:lib:jar::1.0.0", insight),
+            summary,
+            List.of()
+        );
+
+        GraphDocument document = new GraphDocumentBuilder().build(root, projectInfo(), config, versionCheck);
+
+        GraphNode lib = document.nodes().stream()
+            .filter(node -> node.id().equals("org.example:lib:jar::1.0.0"))
+            .findFirst()
+            .orElseThrow();
+        assertThat(lib.versionInsight()).isEqualTo(insight);
+        assertThat(document.versionSummary()).isEqualTo(summary);
     }
 
     @Test
@@ -181,6 +220,30 @@ class GraphDocumentBuilderTest {
 
         assertThat(document.diagnostics())
             .containsExactly(new DiagnosticEntry("warning", "version", "Version was inferred.", "com.acme:app:jar::1.0.0"));
+    }
+
+    @Test
+    void appendsVersionDiagnosticsToExistingDiagnostics() {
+        ExtractedDependencyNode root = node(
+            "com.acme",
+            "app",
+            "1.0.0",
+            "compile",
+            false,
+            List.of(new DiagnosticEntry("warning", "version", "Version was inferred.", null))
+        );
+        VersionCheckResult versionCheck = new VersionCheckResult(
+            Map.of(),
+            VersionSummary.disabled(),
+            List.of(new DiagnosticEntry("warning", "version-update-unavailable", "metadata failed", "com.acme:app:jar::1.0.0"))
+        );
+
+        GraphDocument document = new GraphDocumentBuilder().build(root, projectInfo(), config, versionCheck);
+
+        assertThat(document.diagnostics()).containsExactly(
+            new DiagnosticEntry("warning", "version", "Version was inferred.", "com.acme:app:jar::1.0.0"),
+            new DiagnosticEntry("warning", "version-update-unavailable", "metadata failed", "com.acme:app:jar::1.0.0")
+        );
     }
 
     @Test

@@ -8,9 +8,13 @@ import dev.gois.tools.depviz.graph.ExtractedDependencyNode;
 import dev.gois.tools.depviz.graph.GraphDocument;
 import dev.gois.tools.depviz.graph.GraphDocumentBuilder;
 import dev.gois.tools.depviz.graph.ProjectInfo;
+import dev.gois.tools.depviz.version.VersionCheckResult;
+import dev.gois.tools.depviz.version.VersionInsight;
+import dev.gois.tools.depviz.version.VersionSummary;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -62,5 +66,44 @@ class ViewerWriterTest {
         assertThat(dataBlock).doesNotContain("</ScRiPt>");
         assertThat(dataBlock).doesNotContain("<script>alert(1)");
         assertThat(dataBlock).containsOnlyOnce("</script>");
+    }
+
+    @Test
+    void serializesVersionMetadataInGraphJson() throws Exception {
+        DepvizConfig config = DepvizConfig.fromRaw(null, "false", null, null, null, null, null, tempDir);
+        ExtractedDependencyNode root = new ExtractedDependencyNode(
+            new ArtifactCoordinate("com.acme", "app", "jar", "", "1.0.0"),
+            "compile",
+            false,
+            List.of(new ExtractedDependencyNode(
+                new ArtifactCoordinate("org.example", "lib", "jar", "", "1.0.0"),
+                "compile",
+                false,
+                List.of(),
+                List.of()
+            )),
+            List.of()
+        );
+        VersionCheckResult versionCheck = new VersionCheckResult(
+            Map.of(
+                "org.example:lib:jar::1.0.0",
+                new VersionInsight("1.0.0", "1.0.1", "patch", "outdated", true, "Patch update available.")
+            ),
+            new VersionSummary(true, 1, 0, 1, 1, 0, 0, 0, 0),
+            List.of()
+        );
+        GraphDocument document = new GraphDocumentBuilder().build(
+            root,
+            new ProjectInfo("com.acme", "app", "1.0.0", "jar", "app", ".", false, List.of()),
+            config,
+            versionCheck
+        );
+
+        OutputFiles files = new ViewerWriter().write(document, config.outputDirectory());
+
+        String json = Files.readString(files.jsonFile());
+        assertThat(json).contains("\"versionInsight\"");
+        assertThat(json).contains("\"updateType\" : \"patch\"");
+        assertThat(json).contains("\"versionSummary\"");
     }
 }

@@ -2,6 +2,7 @@ package dev.gois.tools.depviz.graph;
 
 import dev.gois.tools.depviz.config.DepvizConfig;
 import dev.gois.tools.depviz.util.Coordinates;
+import dev.gois.tools.depviz.version.VersionCheckResult;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -15,12 +16,23 @@ public class GraphDocumentBuilder {
     public static final String SCHEMA_VERSION = "1.0";
 
     public GraphDocument build(ExtractedDependencyNode root, ProjectInfo project, DepvizConfig config) {
+        return build(root, project, config, VersionCheckResult.empty(config.checkUpdates()));
+    }
+
+    public GraphDocument build(
+        ExtractedDependencyNode root,
+        ProjectInfo project,
+        DepvizConfig config,
+        VersionCheckResult versionCheck
+    ) {
         Objects.requireNonNull(root, "root is required.");
         Objects.requireNonNull(project, "project is required.");
         Objects.requireNonNull(config, "config is required.");
+        Objects.requireNonNull(versionCheck, "versionCheck is required.");
 
         BuilderState state = new BuilderState();
-        visit(root, null, 0, List.of(), new LinkedHashSet<>(), state);
+        visit(root, null, 0, List.of(), new LinkedHashSet<>(), state, versionCheck);
+        state.diagnostics.addAll(versionCheck.diagnostics());
 
         List<GraphNode> nodes = List.copyOf(state.nodes.values());
         List<GraphEdge> edges = List.copyOf(state.edges.values());
@@ -33,6 +45,7 @@ public class GraphDocumentBuilder {
             nodes,
             edges,
             state.paths,
+            versionCheck.summary(),
             state.diagnostics
         );
     }
@@ -43,19 +56,20 @@ public class GraphDocumentBuilder {
         int depth,
         List<String> parentPath,
         Set<String> activePath,
-        BuilderState state
+        BuilderState state,
+        VersionCheckResult versionCheck
     ) {
-        List<String> currentPath = recordOccurrence(current, parentId, depth, parentPath, state);
+        List<String> currentPath = recordOccurrence(current, parentId, depth, parentPath, state, versionCheck);
         Set<String> nextActivePath = new LinkedHashSet<>(activePath);
         nextActivePath.add(Coordinates.stableId(current.coordinate()));
 
         for (ExtractedDependencyNode child : current.children()) {
             String childId = Coordinates.stableId(child.coordinate());
             if (nextActivePath.contains(childId)) {
-                recordOccurrence(child, Coordinates.stableId(current.coordinate()), depth + 1, currentPath, state);
+                recordOccurrence(child, Coordinates.stableId(current.coordinate()), depth + 1, currentPath, state, versionCheck);
                 continue;
             }
-            visit(child, Coordinates.stableId(current.coordinate()), depth + 1, currentPath, nextActivePath, state);
+            visit(child, Coordinates.stableId(current.coordinate()), depth + 1, currentPath, nextActivePath, state, versionCheck);
         }
     }
 
@@ -64,7 +78,8 @@ public class GraphDocumentBuilder {
         String parentId,
         int depth,
         List<String> parentPath,
-        BuilderState state
+        BuilderState state,
+        VersionCheckResult versionCheck
     ) {
         ArtifactCoordinate coordinate = current.coordinate();
         String currentId = Coordinates.stableId(coordinate);
@@ -72,7 +87,7 @@ public class GraphDocumentBuilder {
 
         state.nodes.merge(
             currentId,
-            toGraphNode(current, currentId, depth),
+            toGraphNode(current, currentId, depth, versionCheck),
             (existing, candidate) -> existing.depth() <= candidate.depth() ? existing : candidate
         );
         state.paths.add(new GraphPath(currentId, currentPath));
@@ -93,7 +108,12 @@ public class GraphDocumentBuilder {
         return currentPath;
     }
 
-    private static GraphNode toGraphNode(ExtractedDependencyNode dependencyNode, String id, int depth) {
+    private static GraphNode toGraphNode(
+        ExtractedDependencyNode dependencyNode,
+        String id,
+        int depth,
+        VersionCheckResult versionCheck
+    ) {
         ArtifactCoordinate coordinate = dependencyNode.coordinate();
         return new GraphNode(
             id,
@@ -109,7 +129,8 @@ public class GraphDocumentBuilder {
             false,
             Coordinates.label(coordinate),
             Coordinates.displayCoordinate(coordinate),
-            coordinate.groupId()
+            coordinate.groupId(),
+            versionCheck.insightsByNodeId().get(id)
         );
     }
 

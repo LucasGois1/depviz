@@ -1,5 +1,7 @@
 package dev.gois.tools.depviz.graph;
 
+import dev.gois.tools.depviz.version.VersionInsight;
+
 public record GraphNode(
     String id,
     String groupId,
@@ -14,6 +16,7 @@ public record GraphNode(
     boolean moduleRoot,
     String label,
     String coordinate,
-    String groupColorKey
+    String groupColorKey,
+    VersionInsight versionInsight
 ) {
 }
