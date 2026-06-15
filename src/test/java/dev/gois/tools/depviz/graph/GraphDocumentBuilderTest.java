@@ -92,6 +92,28 @@ class GraphDocumentBuilderTest {
     }
 
     @Test
+    void aggregateRootKeepsModuleRootsAndDeduplicatesSharedDependencies() {
+        ExtractedDependencyNode shared = node("org.slf4j", "slf4j-api", "2.0.13");
+        ExtractedDependencyNode aggregate = new ExtractedDependencyNode(
+            new ArtifactCoordinate("com.acme", "platform-reactor", "reactor", "", "1.0.0"),
+            "root",
+            false,
+            List.of(
+                new ExtractedDependencyNode(new ArtifactCoordinate("com.acme", "api", "jar", "", "1.0.0"), "module", false, List.of(shared), List.of()),
+                new ExtractedDependencyNode(new ArtifactCoordinate("com.acme", "worker", "jar", "", "1.0.0"), "module", false, List.of(shared), List.of())
+            ),
+            List.of()
+        );
+
+        GraphDocument document = new GraphDocumentBuilder().build(aggregate, projectInfo(), config);
+
+        assertThat(document.nodes()).filteredOn(GraphNode::root).extracting(GraphNode::id).containsExactly("com.acme:platform-reactor:reactor::1.0.0");
+        assertThat(document.nodes()).filteredOn(GraphNode::moduleRoot).extracting(GraphNode::artifactId).containsExactlyInAnyOrder("api", "worker");
+        assertThat(document.nodes()).extracting(GraphNode::id).containsOnlyOnce("org.slf4j:slf4j-api:jar::2.0.13");
+        assertThat(document.edges()).filteredOn(edge -> edge.target().equals("org.slf4j:slf4j-api:jar::2.0.13")).hasSize(2);
+    }
+
+    @Test
     void preventsDuplicateEdges() {
         ExtractedDependencyNode shared = node("org.slf4j", "slf4j-api", "2.0.13");
         ExtractedDependencyNode root = node("com.acme", "app", "1.0.0", shared, shared);

@@ -44,6 +44,10 @@ public final class VersionUpdateChecker {
         ArrayDeque<ExtractedDependencyNode> nodes = new ArrayDeque<>(root.children());
         while (!nodes.isEmpty()) {
             ExtractedDependencyNode node = nodes.removeFirst();
+            if ("root".equals(node.scope()) || "module".equals(node.scope())) {
+                nodes.addAll(node.children());
+                continue;
+            }
             nodes.addAll(node.children());
 
             String nodeId = Coordinates.stableId(node.coordinate());

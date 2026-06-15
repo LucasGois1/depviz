@@ -116,6 +116,8 @@ public class GraphDocumentBuilder {
         VersionCheckResult versionCheck
     ) {
         ArtifactCoordinate coordinate = dependencyNode.coordinate();
+        boolean root = depth == 0;
+        boolean moduleRoot = "module".equals(dependencyNode.scope());
         return new GraphNode(
             id,
             coordinate.groupId(),
@@ -123,11 +125,11 @@ public class GraphDocumentBuilder {
             coordinate.version(),
             coordinate.type(),
             coordinate.classifier(),
-            depth == 0 ? "root" : dependencyNode.scope(),
+            root ? "root" : dependencyNode.scope(),
             dependencyNode.optional(),
             depth,
-            depth == 0,
-            false,
+            root,
+            moduleRoot,
             Coordinates.label(coordinate),
             Coordinates.displayCoordinate(coordinate),
             coordinate.groupId(),

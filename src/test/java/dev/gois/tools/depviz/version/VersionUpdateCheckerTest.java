@@ -120,6 +120,31 @@ class VersionUpdateCheckerTest {
     }
 
     @Test
+    void skipsAggregateRootAndModuleNodesButChecksModuleDependencies() {
+        ArtifactCoordinate module = coordinate("org.example", "api", "1.0.0");
+        ArtifactCoordinate dependency = coordinate("org.example", "dependency", "1.0.0");
+        FakeVersionLookup lookup = new FakeVersionLookup(
+            Map.of(new ArtifactVersionKey("org.example", "dependency"), List.of("1.0.1")),
+            Set.of()
+        );
+
+        VersionCheckResult result = new VersionUpdateChecker(lookup).check(
+            new ExtractedDependencyNode(
+                new ArtifactCoordinate("org.example", "platform-reactor", "reactor", "", "1.0.0"),
+                "root",
+                false,
+                List.of(new ExtractedDependencyNode(module, "module", false, List.of(node(dependency)), List.of())),
+                List.of()
+            ),
+            true
+        );
+
+        assertThat(result.summary().checked()).isEqualTo(1);
+        assertThat(result.insightsByNodeId()).doesNotContainKey(Coordinates.stableId(module));
+        assertThat(result.insightsByNodeId()).containsOnlyKeys(Coordinates.stableId(dependency));
+    }
+
+    @Test
     void returnsDisabledSummaryNoInsightsAndDoesNotCallLookupWhenDisabled() {
         FakeVersionLookup lookup = new FakeVersionLookup(
             Map.of(new ArtifactVersionKey("org.example", "dependency"), List.of("2.0.0")),
