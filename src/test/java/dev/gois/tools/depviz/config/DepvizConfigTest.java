@@ -80,12 +80,12 @@ class DepvizConfigTest {
 
     @Test
     void parsesSnykModeValues() {
-        assertThat(DepvizConfig.fromRaw(null, null, null, null, null, null, null, null, tempDir, "auto", null, null, null, null).snykMode())
-            .isEqualTo(SnykMode.AUTO);
-        assertThat(DepvizConfig.fromRaw(null, null, null, null, null, null, null, null, tempDir, "true", null, null, null, null).snykMode())
-            .isEqualTo(SnykMode.TRUE);
-        assertThat(DepvizConfig.fromRaw(null, null, null, null, null, null, null, null, tempDir, "false", null, null, null, null).snykMode())
-            .isEqualTo(SnykMode.FALSE);
+        assertSnykMode("auto", SnykMode.AUTO);
+        assertSnykMode(" AUTO ", SnykMode.AUTO);
+        assertSnykMode("true", SnykMode.TRUE);
+        assertSnykMode(" TrUe ", SnykMode.TRUE);
+        assertSnykMode("false", SnykMode.FALSE);
+        assertSnykMode(" FALSE ", SnykMode.FALSE);
     }
 
     @Test
@@ -101,10 +101,10 @@ class DepvizConfigTest {
             null,
             tempDir,
             "auto",
-            "/tmp/snyk.json",
-            "/opt/bin/snyk",
-            "my-org",
-            "true"
+            " /tmp/snyk.json ",
+            " /opt/bin/snyk ",
+            " my-org ",
+            " TRUE "
         );
 
         assertThat(config.snykJson()).isEqualTo(Path.of("/tmp/snyk.json"));
@@ -114,11 +114,14 @@ class DepvizConfigTest {
     }
 
     @Test
-    void rejectsInvalidSnykModeAndAllProjects() {
+    void rejectsInvalidSnykMode() {
         assertThatThrownBy(() -> DepvizConfig.fromRaw(null, null, null, null, null, null, null, null, tempDir, "enabled", null, null, null, null))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("depviz.snyk");
+    }
 
+    @Test
+    void rejectsInvalidSnykAllProjects() {
         assertThatThrownBy(() -> DepvizConfig.fromRaw(null, null, null, null, null, null, null, null, tempDir, "auto", null, null, null, "sometimes"))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("depviz.snykAllProjects");
@@ -176,6 +179,11 @@ class DepvizConfigTest {
         assertOnlyIncludes(DepvizScope.PROVIDED, "provided");
         assertOnlyIncludes(DepvizScope.SYSTEM, "system");
         assertOnlyIncludes(DepvizScope.IMPORT, "import");
+    }
+
+    private void assertSnykMode(String raw, SnykMode expectedMode) {
+        assertThat(DepvizConfig.fromRaw(null, null, null, null, null, null, null, null, tempDir, raw, null, null, null, null).snykMode())
+            .isEqualTo(expectedMode);
     }
 
     private static void assertOnlyIncludes(DepvizScope scope, String includedDependencyScope) {
