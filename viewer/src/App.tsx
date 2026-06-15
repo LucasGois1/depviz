@@ -1,8 +1,8 @@
 import { useCallback, useMemo, useState } from "react";
 import { AlertTriangle } from "lucide-react";
-import { buildVisibility, createFilterState, setOptionalMode, setScopeEnabled, toggleCollapsed } from "./filtering";
+import { buildVisibility, createFilterState, setOptionalMode, setScopeEnabled, setUpdateMode, toggleCollapsed } from "./filtering";
 import { availableScopes, buildAdjacency, recommendedInitialLayout, shouldShowAllLabelsInitially } from "./graph";
-import type { DepvizDocument, FilterState, GraphNode, LayoutName, OptionalMode } from "./types";
+import type { DepvizDocument, FilterState, GraphNode, LayoutName, OptionalMode, UpdateFilterMode } from "./types";
 import { GraphCanvas } from "./components/GraphCanvas";
 import { Sidebar } from "./components/Sidebar";
 import { Toolbar } from "./components/Toolbar";
@@ -72,6 +72,10 @@ export default function App() {
     setFilters((current) => setOptionalMode(current, optionalMode));
   }, []);
 
+  const updateUpdateMode = useCallback((updateMode: UpdateFilterMode) => {
+    setFilters((current) => setUpdateMode(current, updateMode));
+  }, []);
+
   const clearFilters = useCallback(() => {
     setFilters(createFilterState());
   }, []);
@@ -95,6 +99,7 @@ export default function App() {
           onSearchChange={updateSearch}
           onScopeChange={updateScope}
           onOptionalModeChange={updateOptionalMode}
+          onUpdateModeChange={updateUpdateMode}
           onLayoutChange={setLayout}
           onShowLabelsChange={setShowLabels}
           onFit={fitGraph}

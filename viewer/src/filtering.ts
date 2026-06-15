@@ -1,11 +1,12 @@
 import { buildAdjacency, nodeSearchText } from "./graph";
-import type { DepvizDocument, FilterState, GraphEdge, GraphNode, OptionalMode, VisibilityState } from "./types";
+import type { DepvizDocument, FilterState, GraphEdge, GraphNode, OptionalMode, UpdateFilterMode, VisibilityState } from "./types";
 
 export function createFilterState(): FilterState {
   return {
     search: "",
     scopes: new Set(),
     optionalMode: "all",
+    updateMode: "all",
     collapsedNodeIds: new Set()
   };
 }
@@ -17,8 +18,9 @@ export function buildVisibility(document: DepvizDocument, filters: FilterState):
     document.nodes.filter((node) => node.root || nodePassesOptionalFilter(node, filters)).map((node) => node.id)
   );
   const reachable = reachableFromRoots(document, filters, baseAllowed, nodeById);
-  const matchingNodeIds = matchingReachableNodes(document, filters.search, reachable);
-  const visibleNodeIds = filters.search.trim()
+  const matchingNodeIds = matchingReachableNodes(document, filters, reachable);
+  const hasNodeMatchingFilter = filters.search.trim() || filters.updateMode !== "all";
+  const visibleNodeIds = hasNodeMatchingFilter
     ? expandSearchContext(matchingNodeIds, adjacency, reachable)
     : reachable;
 
@@ -44,6 +46,10 @@ export function toggleCollapsed(filters: FilterState, nodeId: string): FilterSta
 
 export function setOptionalMode(filters: FilterState, optionalMode: OptionalMode): FilterState {
   return { ...filters, optionalMode };
+}
+
+export function setUpdateMode(filters: FilterState, updateMode: UpdateFilterMode): FilterState {
+  return { ...filters, updateMode };
 }
 
 export function setScopeEnabled(filters: FilterState, scope: string, enabled: boolean): FilterState {
@@ -77,6 +83,31 @@ function edgePassesFilters(edge: GraphEdge, filters: FilterState): boolean {
     return false;
   }
   return true;
+}
+
+export function nodeMatchesUpdateMode(node: GraphNode, updateMode: UpdateFilterMode): boolean {
+  if (updateMode === "all") {
+    return true;
+  }
+
+  const insight = node.versionInsight;
+  if (!insight) {
+    return false;
+  }
+
+  if (updateMode === "outdated") {
+    return insight.status === "outdated";
+  }
+
+  if (updateMode === "unavailable") {
+    return insight.status === "unavailable";
+  }
+
+  if (updateMode === "unknown") {
+    return insight.status !== "unavailable" && insight.updateType === "unknown";
+  }
+
+  return insight.status === "outdated" && insight.updateType === updateMode;
 }
 
 function reachableFromRoots(
@@ -116,15 +147,17 @@ function reachableFromRoots(
   return visible;
 }
 
-function matchingReachableNodes(document: DepvizDocument, search: string, reachable: Set<string>): Set<string> {
-  const normalized = search.trim().toLowerCase();
-  if (!normalized) {
+function matchingReachableNodes(document: DepvizDocument, filters: FilterState, reachable: Set<string>): Set<string> {
+  const normalizedSearch = filters.search.trim().toLowerCase();
+  const hasUpdateFilter = filters.updateMode !== "all";
+  if (!normalizedSearch && !hasUpdateFilter) {
     return new Set();
   }
   return new Set(
     document.nodes
       .filter((node) => reachable.has(node.id))
-      .filter((node) => nodeSearchText(node).includes(normalized))
+      .filter((node) => !normalizedSearch || nodeSearchText(node).includes(normalizedSearch))
+      .filter((node) => !hasUpdateFilter || nodeMatchesUpdateMode(node, filters.updateMode))
       .map((node) => node.id)
   );
 }

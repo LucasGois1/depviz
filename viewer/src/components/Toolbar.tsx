@@ -1,6 +1,6 @@
 import { Circle, Crosshair, Eye, EyeOff, FilterX, GitBranch, Maximize2, Network, RotateCcw, Search } from "lucide-react";
 import { layoutDisplayName } from "../graph";
-import type { DepvizDocument, FilterState, LayoutName, OptionalMode } from "../types";
+import type { DepvizDocument, FilterState, LayoutName, OptionalMode, UpdateFilterMode, VersionSummary } from "../types";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Select, SelectItem } from "./ui/select";
@@ -15,6 +15,7 @@ interface ToolbarProps {
   onSearchChange: (search: string) => void;
   onScopeChange: (scope: string, enabled: boolean) => void;
   onOptionalModeChange: (mode: OptionalMode) => void;
+  onUpdateModeChange: (mode: UpdateFilterMode) => void;
   onLayoutChange: (layout: LayoutName) => void;
   onShowLabelsChange: (showLabels: boolean) => void;
   onFit: () => void;
@@ -34,6 +35,7 @@ export function Toolbar({
   onSearchChange,
   onScopeChange,
   onOptionalModeChange,
+  onUpdateModeChange,
   onLayoutChange,
   onShowLabelsChange,
   onFit,
@@ -84,6 +86,18 @@ export function Toolbar({
           <SelectItem value="optional">Optional only</SelectItem>
         </Select>
 
+        {document.versionSummary?.enabled ? (
+          <Select value={filters.updateMode} onValueChange={(value) => onUpdateModeChange(value as UpdateFilterMode)} label="Update filter">
+            <SelectItem value="all">All updates</SelectItem>
+            <SelectItem value="outdated">{updateLabel("Outdated", document.versionSummary, "outdated")}</SelectItem>
+            <SelectItem value="major">{updateLabel("Major", document.versionSummary, "major")}</SelectItem>
+            <SelectItem value="minor">{updateLabel("Minor", document.versionSummary, "minor")}</SelectItem>
+            <SelectItem value="patch">{updateLabel("Patch", document.versionSummary, "patch")}</SelectItem>
+            <SelectItem value="unknown">{updateLabel("Unknown", document.versionSummary, "unknown")}</SelectItem>
+            <SelectItem value="unavailable">{updateLabel("Unavailable", document.versionSummary, "unavailable")}</SelectItem>
+          </Select>
+        ) : null}
+
         <Select value={layout} onValueChange={(value) => onLayoutChange(value as LayoutName)} label="Graph layout">
           {layouts.map((option) => (
             <SelectItem key={option} value={option}>
@@ -114,6 +128,10 @@ export function Toolbar({
       </div>
     </header>
   );
+}
+
+function updateLabel(label: string, summary: VersionSummary, key: keyof Pick<VersionSummary, "outdated" | "major" | "minor" | "patch" | "unknown" | "unavailable">) {
+  return `${label} (${summary[key]})`;
 }
 
 function Metric({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {

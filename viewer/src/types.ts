@@ -3,6 +3,7 @@ export interface DepvizDocument {
   generatedAt: string;
   project: ProjectInfo;
   summary: GraphSummary;
+  versionSummary?: VersionSummary;
   viewerConfig: ViewerConfig;
   nodes: GraphNode[];
   edges: GraphEdge[];
@@ -49,6 +50,7 @@ export interface GraphNode {
   label: string;
   coordinate: string;
   groupColorKey: string;
+  versionInsight?: VersionInsight | null;
 }
 
 export interface GraphEdge {
@@ -76,10 +78,34 @@ export type LayoutName = "breadthfirst" | "force" | "circle" | "concentric";
 
 export type OptionalMode = "all" | "required" | "optional";
 
+export type UpdateFilterMode = "all" | "outdated" | "major" | "minor" | "patch" | "unknown" | "unavailable";
+
+export interface VersionInsight {
+  currentVersion: string;
+  latestVersion: string | null;
+  updateType: "patch" | "minor" | "major" | "unknown" | "none";
+  status: "current" | "outdated" | "unavailable" | "unchecked";
+  checked: boolean;
+  message: string | null;
+}
+
+export interface VersionSummary {
+  enabled: boolean;
+  checked: number;
+  current: number;
+  outdated: number;
+  patch: number;
+  minor: number;
+  major: number;
+  unknown: number;
+  unavailable: number;
+}
+
 export interface FilterState {
   search: string;
   scopes: Set<string>;
   optionalMode: OptionalMode;
+  updateMode: UpdateFilterMode;
   collapsedNodeIds: Set<string>;
 }
 

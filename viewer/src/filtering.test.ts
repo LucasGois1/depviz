@@ -119,6 +119,75 @@ describe("buildVisibility", () => {
     );
     expect(visibility.visibleEdgeIds).toEqual(new Set(["root-beta", "beta-shared"]));
   });
+
+  it("filters to outdated dependencies while keeping root and path context visible", () => {
+    const visibility = buildVisibility(versionDocument, {
+      ...createFilterState(),
+      updateMode: "outdated"
+    });
+
+    expect(visibility.visibleNodeIds).toEqual(
+      new Set([
+        "dev.example:demo:jar::1.0.0",
+        "org.current:platform:jar::1.0.0",
+        "org.major:api:jar::1.0.0",
+        "org.patch:helper:jar::1.0.0",
+        "org.test:fixture:jar::1.0.0"
+      ])
+    );
+    expect(visibility.matchingNodeIds).toEqual(
+      new Set(["org.major:api:jar::1.0.0", "org.patch:helper:jar::1.0.0", "org.test:fixture:jar::1.0.0"])
+    );
+    expect(visibility.visibleEdgeIds).toEqual(new Set(["root-platform", "platform-api", "api-helper", "root-fixture"]));
+  });
+
+  it("filters to major updates while keeping path context visible", () => {
+    const visibility = buildVisibility(versionDocument, {
+      ...createFilterState(),
+      updateMode: "major"
+    });
+
+    expect(visibility.visibleNodeIds).toEqual(
+      new Set([
+        "dev.example:demo:jar::1.0.0",
+        "org.current:platform:jar::1.0.0",
+        "org.major:api:jar::1.0.0",
+        "org.patch:helper:jar::1.0.0"
+      ])
+    );
+    expect(visibility.matchingNodeIds).toEqual(new Set(["org.major:api:jar::1.0.0"]));
+    expect(visibility.visibleEdgeIds).toEqual(new Set(["root-platform", "platform-api", "api-helper"]));
+  });
+
+  it("composes patch update filtering with scope filters", () => {
+    const visibility = buildVisibility(versionDocument, {
+      ...createFilterState(),
+      updateMode: "patch",
+      scopes: new Set(["compile"])
+    });
+
+    expect(visibility.visibleNodeIds).toEqual(
+      new Set([
+        "dev.example:demo:jar::1.0.0",
+        "org.current:platform:jar::1.0.0",
+        "org.major:api:jar::1.0.0",
+        "org.patch:helper:jar::1.0.0"
+      ])
+    );
+    expect(visibility.matchingNodeIds).toEqual(new Set(["org.patch:helper:jar::1.0.0"]));
+    expect(visibility.visibleEdgeIds).toEqual(new Set(["root-platform", "platform-api", "api-helper"]));
+  });
+
+  it("keeps existing visibility behavior when update filtering is all", () => {
+    const visibility = buildVisibility(versionDocument, {
+      ...createFilterState(),
+      updateMode: "all"
+    });
+
+    expect(visibility.visibleNodeIds).toEqual(new Set(versionDocument.nodes.map((versionNode) => versionNode.id)));
+    expect(visibility.visibleEdgeIds).toEqual(new Set(versionDocument.edges.map((versionEdge) => versionEdge.id)));
+    expect(visibility.matchingNodeIds).toEqual(new Set());
+  });
 });
 
 function node(
@@ -150,4 +219,69 @@ function node(
 
 function edge(id: string, source: string, target: string, scope: string, optional: boolean) {
   return { id, source, target, scope, optional, depth: 1 };
+}
+
+const versionDocument: DepvizDocument = {
+  ...document,
+  summary: {
+    nodeCount: 6,
+    edgeCount: 5,
+    nodesByScope: { root: 1, compile: 4, test: 1 },
+    nodesByGroupId: {
+      "dev.example": 1,
+      "org.current": 1,
+      "org.major": 1,
+      "org.patch": 1,
+      "org.test": 1,
+      "org.unavailable": 1
+    }
+  },
+  versionSummary: {
+    enabled: true,
+    checked: 5,
+    current: 1,
+    outdated: 3,
+    patch: 2,
+    minor: 0,
+    major: 1,
+    unknown: 0,
+    unavailable: 1
+  },
+  nodes: [
+    versionNode("dev.example:demo:jar::1.0.0", "dev.example", "demo", "root", "none", "current", true),
+    versionNode("org.current:platform:jar::1.0.0", "org.current", "platform", "compile", "none", "current"),
+    versionNode("org.major:api:jar::1.0.0", "org.major", "api", "compile", "major", "outdated"),
+    versionNode("org.patch:helper:jar::1.0.0", "org.patch", "helper", "compile", "patch", "outdated"),
+    versionNode("org.test:fixture:jar::1.0.0", "org.test", "fixture", "test", "patch", "outdated"),
+    versionNode("org.unavailable:legacy:jar::1.0.0", "org.unavailable", "legacy", "compile", "unknown", "unavailable")
+  ],
+  edges: [
+    edge("root-platform", "dev.example:demo:jar::1.0.0", "org.current:platform:jar::1.0.0", "compile", false),
+    edge("platform-api", "org.current:platform:jar::1.0.0", "org.major:api:jar::1.0.0", "compile", false),
+    edge("api-helper", "org.major:api:jar::1.0.0", "org.patch:helper:jar::1.0.0", "compile", false),
+    edge("root-fixture", "dev.example:demo:jar::1.0.0", "org.test:fixture:jar::1.0.0", "test", false),
+    edge("root-legacy", "dev.example:demo:jar::1.0.0", "org.unavailable:legacy:jar::1.0.0", "compile", false)
+  ]
+};
+
+function versionNode(
+  id: string,
+  groupId: string,
+  artifactId: string,
+  scope: string,
+  updateType: "patch" | "minor" | "major" | "unknown" | "none",
+  status: "current" | "outdated" | "unavailable" | "unchecked",
+  root = false
+) {
+  return {
+    ...node(id, groupId, artifactId, "1.0.0", scope, false, root),
+    versionInsight: {
+      currentVersion: "1.0.0",
+      latestVersion: status === "unavailable" ? null : "2.0.0",
+      updateType,
+      status,
+      checked: status !== "unchecked",
+      message: null
+    }
+  };
 }
