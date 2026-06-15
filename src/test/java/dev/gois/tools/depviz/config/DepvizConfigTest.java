@@ -61,15 +61,21 @@ class DepvizConfigTest {
     @Test
     void defaultsCheckUpdatesToTrue() {
         DepvizConfig config = DepvizConfig.fromRaw(null, null, null, null, null, null, null, null, tempDir);
+        DepvizConfig blank = DepvizConfig.fromRaw(null, null, null, null, null, null, null, " ", tempDir);
 
         assertThat(config.checkUpdates()).isTrue();
+        assertThat(blank.checkUpdates()).isTrue();
     }
 
     @Test
-    void parsesCheckUpdatesFalse() {
+    void parsesCheckUpdatesCaseInsensitiveBoolean() {
+        DepvizConfig enabled = DepvizConfig.fromRaw(null, null, null, null, null, null, null, "TrUe", tempDir);
         DepvizConfig disabled = DepvizConfig.fromRaw(null, null, null, null, null, null, null, "false", tempDir);
+        DepvizConfig uppercaseDisabled = DepvizConfig.fromRaw(null, null, null, null, null, null, null, "FALSE", tempDir);
 
+        assertThat(enabled.checkUpdates()).isTrue();
         assertThat(disabled.checkUpdates()).isFalse();
+        assertThat(uppercaseDisabled.checkUpdates()).isFalse();
     }
 
     @Test
