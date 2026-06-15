@@ -9,10 +9,16 @@ import dev.gois.tools.depviz.graph.ProjectInfo;
 import dev.gois.tools.depviz.output.BrowserOpener;
 import dev.gois.tools.depviz.output.OutputFiles;
 import dev.gois.tools.depviz.output.ViewerWriter;
+import dev.gois.tools.depviz.version.MavenVersionLookup;
+import dev.gois.tools.depviz.version.VersionCheckResult;
+import dev.gois.tools.depviz.version.VersionUpdateChecker;
 import java.io.File;
 import java.io.IOException;
 import java.net.URI;
 import java.util.List;
+import org.eclipse.aether.RepositorySystem;
+import org.eclipse.aether.RepositorySystemSession;
+import org.eclipse.aether.repository.RemoteRepository;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugins.annotations.Component;
@@ -28,6 +34,15 @@ public final class OpenMojo extends AbstractMojo {
 
     @Component
     private DependencyCollectorBuilder dependencyCollectorBuilder;
+
+    @Component
+    private RepositorySystem repositorySystem;
+
+    @Parameter(defaultValue = "${repositorySystemSession}", readonly = true, required = true)
+    private RepositorySystemSession repositorySystemSession;
+
+    @Parameter(defaultValue = "${project.remoteProjectRepositories}", readonly = true, required = true)
+    private List<RemoteRepository> remoteRepositories;
 
     @Parameter(property = "depviz.scope")
     private String scope;
@@ -60,7 +75,8 @@ public final class OpenMojo extends AbstractMojo {
     public void execute() throws MojoExecutionException {
         DepvizConfig config = parseConfig();
         ExtractedDependencyNode root = new MavenDependencyGraphExtractor(dependencyCollectorBuilder).extract(project, config);
-        GraphDocument document = new GraphDocumentBuilder().build(root, projectInfo(), config);
+        VersionCheckResult versionCheck = checkVersions(root, config);
+        GraphDocument document = new GraphDocumentBuilder().build(root, projectInfo(), config, versionCheck);
         OutputFiles outputFiles = write(document, config);
         URI htmlUri = outputFiles.htmlFile().toAbsolutePath().normalize().toUri();
 
@@ -89,6 +105,20 @@ public final class OpenMojo extends AbstractMojo {
             );
         } catch (IllegalArgumentException exception) {
             throw new MojoExecutionException(exception.getMessage(), exception);
+        }
+    }
+
+    private VersionCheckResult checkVersions(ExtractedDependencyNode root, DepvizConfig config) {
+        try {
+            return new VersionUpdateChecker(
+                new MavenVersionLookup(repositorySystem, repositorySystemSession, remoteRepositories)
+            ).check(root, config.checkUpdates());
+        } catch (RuntimeException exception) {
+            String message = exception.getMessage() == null
+                ? exception.getClass().getSimpleName()
+                : exception.getMessage();
+            getLog().warn("Version update check failed: " + message);
+            return VersionCheckResult.failed(config.checkUpdates(), message);
         }
     }
 
