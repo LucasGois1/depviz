@@ -3,6 +3,7 @@ package dev.gois.tools.depviz.version;
 import dev.gois.tools.depviz.graph.DiagnosticEntry;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public record VersionCheckResult(
     Map<String, VersionInsight> insightsByNodeId,
@@ -11,6 +12,7 @@ public record VersionCheckResult(
 ) {
     public VersionCheckResult {
         insightsByNodeId = Map.copyOf(insightsByNodeId);
+        summary = Objects.requireNonNull(summary, "summary is required.");
         diagnostics = List.copyOf(diagnostics);
     }
 

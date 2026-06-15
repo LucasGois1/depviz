@@ -37,6 +37,32 @@ class VersionUpdateCheckerTest {
     }
 
     @Test
+    void reusesArtifactLookupButClassifiesEachNodeVersionIndependently() {
+        ArtifactCoordinate oldVersion = coordinate("org.example", "shared", "1.0.0");
+        ArtifactCoordinate latestVersion = coordinate("org.example", "shared", "2.0.0");
+        FakeVersionLookup lookup = new FakeVersionLookup(
+            Map.of(new ArtifactVersionKey("org.example", "shared"), List.of("1.0.0", "2.0.0")),
+            Set.of()
+        );
+
+        VersionCheckResult result = new VersionUpdateChecker(lookup).check(
+            root(node(oldVersion), node(latestVersion)),
+            true
+        );
+
+        assertThat(lookup.calls()).isEqualTo(1);
+        assertThat(result.insightsByNodeId())
+            .containsKeys(Coordinates.stableId(oldVersion), Coordinates.stableId(latestVersion));
+        VersionInsight oldInsight = result.insightsByNodeId().get(Coordinates.stableId(oldVersion));
+        VersionInsight latestInsight = result.insightsByNodeId().get(Coordinates.stableId(latestVersion));
+        assertThat(oldInsight.currentVersion()).isEqualTo("1.0.0");
+        assertThat(oldInsight.status()).isEqualTo("outdated");
+        assertThat(latestInsight.currentVersion()).isEqualTo("2.0.0");
+        assertThat(latestInsight.status()).isEqualTo("current");
+        assertThat(result.summary()).isEqualTo(new VersionSummary(true, 2, 1, 1, 0, 0, 1, 0, 0));
+    }
+
+    @Test
     void countsCurrentPatchMinorMajorUnknownAndUnavailableSummaries() {
         ArtifactCoordinate current = coordinate("org.example", "current", "1.0.0");
         ArtifactCoordinate patch = coordinate("org.example", "patch", "1.0.0");
