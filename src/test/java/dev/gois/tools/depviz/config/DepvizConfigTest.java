@@ -5,8 +5,12 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 class DepvizConfigTest {
+    @TempDir
+    Path tempDir;
+
     @Test
     void appliesDefaults() {
         DepvizConfig config = DepvizConfig.fromRaw(null, null, null, null, null, null, null, null);
@@ -52,6 +56,27 @@ class DepvizConfigTest {
         assertThatThrownBy(() -> DepvizConfig.fromRaw(null, "flase", null, null, null, null, null, Path.of("target/depviz")))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("depviz.open must be true or false.");
+    }
+
+    @Test
+    void defaultsCheckUpdatesToTrue() {
+        DepvizConfig config = DepvizConfig.fromRaw(null, null, null, null, null, null, null, null, tempDir);
+
+        assertThat(config.checkUpdates()).isTrue();
+    }
+
+    @Test
+    void parsesCheckUpdatesFalse() {
+        DepvizConfig disabled = DepvizConfig.fromRaw(null, null, null, null, null, null, null, "false", tempDir);
+
+        assertThat(disabled.checkUpdates()).isFalse();
+    }
+
+    @Test
+    void rejectsInvalidCheckUpdates() {
+        assertThatThrownBy(() -> DepvizConfig.fromRaw(null, null, null, null, null, null, null, "sometimes", tempDir))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("depviz.checkUpdates");
     }
 
     @Test

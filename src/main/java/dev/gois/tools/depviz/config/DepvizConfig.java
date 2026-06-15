@@ -10,6 +10,7 @@ public record DepvizConfig(
     DepvizLayout initialLayout,
     NodeMode nodeMode,
     int maxInitialLabels,
+    boolean checkUpdates,
     Path outputDirectory
 ) {
     public static DepvizConfig fromRaw(
@@ -22,11 +23,26 @@ public record DepvizConfig(
         String excludes,
         Path outputDirectory
     ) {
+        return fromRaw(scope, open, includes, layout, nodeMode, maxInitialLabels, excludes, null, outputDirectory);
+    }
+
+    public static DepvizConfig fromRaw(
+        String scope,
+        String open,
+        String includes,
+        String layout,
+        String nodeMode,
+        String maxInitialLabels,
+        String excludes,
+        String checkUpdates,
+        Path outputDirectory
+    ) {
         DepvizScope parsedScope = DepvizScope.parse(scope);
         DepvizLayout parsedLayout = DepvizLayout.parse(layout);
         NodeMode parsedNodeMode = NodeMode.parse(nodeMode);
         boolean parsedOpen = parseOpen(open);
         int parsedMaxInitialLabels = parseMaxInitialLabels(maxInitialLabels);
+        boolean parsedCheckUpdates = parseCheckUpdates(checkUpdates);
         Path resolvedOutputDirectory = outputDirectory == null ? Path.of("target", "depviz") : outputDirectory;
         return new DepvizConfig(
             parsedScope,
@@ -36,8 +52,22 @@ public record DepvizConfig(
             parsedLayout,
             parsedNodeMode,
             parsedMaxInitialLabels,
+            parsedCheckUpdates,
             resolvedOutputDirectory
         );
+    }
+
+    private static boolean parseCheckUpdates(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return true;
+        }
+        if ("true".equalsIgnoreCase(raw.trim())) {
+            return true;
+        }
+        if ("false".equalsIgnoreCase(raw.trim())) {
+            return false;
+        }
+        throw new IllegalArgumentException("Invalid depviz.checkUpdates value: " + raw);
     }
 
     private static int parseMaxInitialLabels(String raw) {

@@ -50,6 +50,9 @@ public final class OpenMojo extends AbstractMojo {
     @Parameter(property = "depviz.maxInitialLabels")
     private String maxInitialLabels;
 
+    @Parameter(property = "depviz.checkUpdates")
+    private String checkUpdates;
+
     @Parameter(property = "depviz.outputDirectory", defaultValue = "${project.build.directory}/depviz")
     private File outputDirectory;
 
@@ -81,6 +84,7 @@ public final class OpenMojo extends AbstractMojo {
                 nodeMode,
                 maxInitialLabels,
                 excludes,
+                checkUpdates,
                 outputDirectory == null ? null : outputDirectory.toPath()
             );
         } catch (IllegalArgumentException exception) {
