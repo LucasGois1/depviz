@@ -13,6 +13,8 @@ interface VersionBadge {
   color: BadgeColor;
 }
 
+type VersionBadgeTone = SigmaVersionUpdateType | "unavailable";
+
 export function labelSideForCanvasPosition(x: number, canvasWidth: number): "left" | "right" {
   return x > canvasWidth * 0.62 ? "left" : "right";
 }
@@ -85,7 +87,7 @@ export function badgeTextForVersionInsight(insight: VersionInsight | null | unde
   return null;
 }
 
-export function badgeColorForUpdate(updateType: SigmaVersionUpdateType): BadgeColor {
+export function badgeColorForUpdate(updateType: VersionBadgeTone): BadgeColor {
   if (updateType === "patch") {
     return { background: "#ccfbf1", border: "#5eead4", text: "#0f766e" };
   }
@@ -101,13 +103,14 @@ export function badgeColorForUpdate(updateType: SigmaVersionUpdateType): BadgeCo
   return { background: "#e5e7eb", border: "#cbd5e1", text: "#475569" };
 }
 
-export function versionBadgeForNode(node: Pick<Partial<SigmaNodeAttributes>, "updateBadge" | "updateType">): VersionBadge | null {
+export function versionBadgeForNode(node: Pick<Partial<SigmaNodeAttributes>, "updateBadge" | "updateType" | "versionStatus">): VersionBadge | null {
   if (!node.updateBadge || !node.updateType) {
     return null;
   }
+  const badgeTone = node.versionStatus === "unavailable" ? "unavailable" : node.updateType;
   return {
     text: node.updateBadge,
-    color: badgeColorForUpdate(node.updateType)
+    color: badgeColorForUpdate(badgeTone)
   };
 }
 

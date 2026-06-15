@@ -52,6 +52,13 @@ describe("versionBadgeForNode", () => {
   it("skips nodes without badge metadata", () => {
     expect(versionBadgeForNode({ updateType: "major" } as SigmaNodeAttributes)).toBeNull();
   });
+
+  it("uses unavailable badge colors from status even when update type is unknown", () => {
+    expect(versionBadgeForNode({ versionStatus: "unavailable", updateType: "unknown", updateBadge: "!" } as SigmaNodeAttributes)).toEqual({
+      text: "!",
+      color: { background: "#fef3c7", border: "#fcd34d", text: "#b45309" }
+    });
+  });
 });
 
 function insight(updateType: VersionInsight["updateType"], status: VersionInsight["status"]): VersionInsight {

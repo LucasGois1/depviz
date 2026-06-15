@@ -164,9 +164,11 @@ describe("toSigmaGraph", () => {
       label: "service",
       forceLabel: true,
       versionStatus: "unavailable",
-      updateType: "unavailable",
+      updateType: "unknown",
       updateBadge: "!"
     });
+    expect(graph.getNodeAttribute(currentNodeId, "versionStatus")).toBe("current");
+    expect(graph.getNodeAttribute(currentNodeId, "updateType")).toBe("none");
     expect(graph.getNodeAttribute(currentNodeId, "updateBadge")).toBeUndefined();
     expect(graph.getNodeAttribute(currentNodeId, "forceLabel")).toBe(true);
   });
@@ -205,9 +207,9 @@ describe("toSigmaGraph", () => {
     expect(distance(beta, shared)).toBeGreaterThan(1.6);
   });
 
-  it("staggers shared dependency lanes so labels do not stack on the same row", () => {
+  it("preserves the base force-layout lane y placement", () => {
     const deeperSharedId = "org.shared:deep-shared:jar::1.0.0";
-    const staggeredDocument: DepvizDocument = {
+    const laneDocument: DepvizDocument = {
       ...document,
       nodes: [...document.nodes, node(deeperSharedId, "org.shared", "deep-shared", false, 3)],
       edges: [
@@ -216,11 +218,12 @@ describe("toSigmaGraph", () => {
         edge("beta-deeper-shared", "org.beta:service:jar::1.0.0", deeperSharedId, 3)
       ]
     };
-    const graph = toSigmaGraph(staggeredDocument, "force");
+    const graph = toSigmaGraph(laneDocument, "force");
     const firstShared = graph.getNodeAttributes(sharedTargetId);
     const deeperShared = graph.getNodeAttributes(deeperSharedId);
 
-    expect(Math.abs(firstShared.y - deeperShared.y)).toBeGreaterThan(0.8);
+    expect(firstShared.y).toBe(0);
+    expect(deeperShared.y).toBe(0);
   });
 });
 
