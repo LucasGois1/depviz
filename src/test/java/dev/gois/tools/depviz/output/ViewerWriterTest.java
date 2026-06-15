@@ -2,6 +2,8 @@ package dev.gois.tools.depviz.output;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.gois.tools.depviz.config.DepvizConfig;
 import dev.gois.tools.depviz.graph.ArtifactCoordinate;
 import dev.gois.tools.depviz.graph.ExtractedDependencyNode;
@@ -21,6 +23,8 @@ import org.junit.jupiter.api.io.TempDir;
 class ViewerWriterTest {
     @TempDir
     Path tempDir;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     private static final String MALICIOUS_TEXT = "</ScRiPt><script>alert(1)</script>";
 
@@ -101,9 +105,39 @@ class ViewerWriterTest {
 
         OutputFiles files = new ViewerWriter().write(document, config.outputDirectory());
 
-        String json = Files.readString(files.jsonFile());
-        assertThat(json).contains("\"versionInsight\"");
-        assertThat(json).contains("\"updateType\" : \"patch\"");
-        assertThat(json).contains("\"versionSummary\"");
+        JsonNode json = objectMapper.readTree(files.jsonFile().toFile());
+        JsonNode libNode = nodeById(json, "org.example:lib:jar::1.0.0");
+        assertThat(json.path("versionSummary").path("enabled").asBoolean()).isTrue();
+        assertThat(libNode).isNotNull();
+        assertThat(libNode.path("versionInsight").path("updateType").asText()).isEqualTo("patch");
+        assertThat(libNode.path("versionInsight").path("status").asText()).isEqualTo("outdated");
+    }
+
+    @Test
+    void serializesDisabledVersionMetadataByDefault() throws Exception {
+        DepvizConfig config = DepvizConfig.fromRaw(null, "false", null, null, null, null, null, "false", tempDir);
+        GraphDocument document = new GraphDocumentBuilder().build(
+            new ExtractedDependencyNode(new ArtifactCoordinate("com.acme", "app", "jar", "", "1.0.0"), "compile", false, List.of(), List.of()),
+            new ProjectInfo("com.acme", "app", "1.0.0", "jar", "app", ".", false, List.of()),
+            config
+        );
+
+        OutputFiles files = new ViewerWriter().write(document, config.outputDirectory());
+
+        JsonNode json = objectMapper.readTree(files.jsonFile().toFile());
+        JsonNode rootNode = nodeById(json, "com.acme:app:jar::1.0.0");
+        assertThat(json.path("versionSummary").path("enabled").asBoolean()).isFalse();
+        assertThat(rootNode).isNotNull();
+        assertThat(rootNode.has("versionInsight")).isTrue();
+        assertThat(rootNode.get("versionInsight").isNull()).isTrue();
+    }
+
+    private static JsonNode nodeById(JsonNode document, String id) {
+        for (JsonNode node : document.path("nodes")) {
+            if (id.equals(node.path("id").asText())) {
+                return node;
+            }
+        }
+        return null;
     }
 }

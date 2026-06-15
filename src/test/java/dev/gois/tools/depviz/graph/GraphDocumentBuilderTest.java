@@ -43,6 +43,15 @@ class GraphDocumentBuilderTest {
     }
 
     @Test
+    void existingBuilderOverloadValidatesNullConfigWithExplicitMessage() {
+        ExtractedDependencyNode root = node("com.acme", "app", "1.0.0");
+
+        assertThatExceptionOfType(NullPointerException.class)
+            .isThrownBy(() -> new GraphDocumentBuilder().build(root, projectInfo(), null))
+            .withMessage("config is required.");
+    }
+
+    @Test
     void attachesVersionInsightAndSummaryWhenVersionCheckIsSupplied() {
         ExtractedDependencyNode dependency = node("org.example", "lib", "1.0.0");
         ExtractedDependencyNode root = node("com.acme", "app", "1.0.0", dependency);

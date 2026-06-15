@@ -16,6 +16,7 @@ public class GraphDocumentBuilder {
     public static final String SCHEMA_VERSION = "1.0";
 
     public GraphDocument build(ExtractedDependencyNode root, ProjectInfo project, DepvizConfig config) {
+        Objects.requireNonNull(config, "config is required.");
         return build(root, project, config, VersionCheckResult.empty(config.checkUpdates()));
     }
 
