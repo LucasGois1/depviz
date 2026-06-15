@@ -12,7 +12,7 @@ public final class VersionClassifier {
     private static final String NONE = "none";
     private static final String UNKNOWN = "unknown";
     private static final Pattern PRERELEASE_MARKER = Pattern.compile(
-        "(?i)(^|[.\\-_])(?:snapshot|alpha|beta|rc|cr|m|milestone|preview|ea)\\d*($|[.\\-_])"
+        "(?i)(snapshot|alpha|beta|rc|cr|m|milestone|preview|ea)"
     );
     private static final Pattern NUMERIC_SEGMENT = Pattern.compile("\\d+");
 
@@ -38,17 +38,16 @@ public final class VersionClassifier {
     public static VersionInsight classify(String currentVersion, String latestVersion) {
         String current = normalize(currentVersion);
         String latest = normalize(latestVersion);
-        if (latest.isEmpty()) {
-            return new VersionInsight(current, latest, UNKNOWN, "unavailable", true, "Latest version unavailable");
-        }
+        requireVersion(current, "Current");
+        requireVersion(latest, "Latest");
 
         ComparableVersion currentComparable = new ComparableVersion(current);
         ComparableVersion latestComparable = new ComparableVersion(latest);
         if (latestComparable.compareTo(currentComparable) <= 0) {
-            return new VersionInsight(current, latest, NONE, CURRENT, true, "");
+            return new VersionInsight(current, latest, NONE, CURRENT, true, null);
         }
 
-        return new VersionInsight(current, latest, classifyUpdateType(current, latest), OUTDATED, true, "");
+        return new VersionInsight(current, latest, classifyUpdateType(current, latest), OUTDATED, true, null);
     }
 
     private static String classifyUpdateType(String currentVersion, String latestVersion) {
@@ -100,5 +99,11 @@ public final class VersionClassifier {
 
     private static String normalize(String version) {
         return version == null ? "" : version.trim();
+    }
+
+    private static void requireVersion(String version, String label) {
+        if (version.isBlank()) {
+            throw new IllegalArgumentException(label + " version must not be blank");
+        }
     }
 }
