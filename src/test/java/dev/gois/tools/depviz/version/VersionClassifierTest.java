@@ -63,9 +63,14 @@ class VersionClassifierTest {
         assertThat(VersionClassifier.isStable("1.0M1")).isFalse();
         assertThat(VersionClassifier.isStable("1.0.0M1")).isFalse();
         assertThat(VersionClassifier.isStable("2.0.0preview")).isFalse();
+        assertThat(VersionClassifier.isStable("1.0.0-beta")).isFalse();
+        assertThat(VersionClassifier.isStable("1.0.0-SNAPSHOT")).isFalse();
+        assertThat(VersionClassifier.isStable("1.5.22.RELEASE")).isTrue();
+        assertThat(VersionClassifier.isStable("1.5.22.Final")).isTrue();
         assertThat(VersionClassifier.isStable("7.0.0")).isTrue();
         assertThat(VersionClassifier.latestStable(List.of("7.0.0-RC1", "6.2.0", "6.2.1-SNAPSHOT", "6.3.0")))
             .contains("6.3.0");
+        assertThat(VersionClassifier.latestStable(List.of("1.5.22.RELEASE"))).contains("1.5.22.RELEASE");
         assertThat(VersionClassifier.latestStable(List.of("1.0.0-beta", "1.0.0-SNAPSHOT"))).isEmpty();
     }
 

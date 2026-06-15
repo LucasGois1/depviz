@@ -12,7 +12,7 @@ public final class VersionClassifier {
     private static final String NONE = "none";
     private static final String UNKNOWN = "unknown";
     private static final Pattern PRERELEASE_MARKER = Pattern.compile(
-        "(?i)(snapshot|alpha|beta|rc|cr|m|milestone|preview|ea)"
+        "(?i)(?:^|[._-]|(?<=\\d))(?:snapshot|alpha|beta|milestone|preview|rc|cr|m|ea)(?=$|[._-]|\\d)"
     );
     private static final Pattern NUMERIC_SEGMENT = Pattern.compile("\\d+");
 
