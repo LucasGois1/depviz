@@ -19,7 +19,7 @@ public final class ReactorDependencyGraphExtractor {
         Objects.requireNonNull(config, "config is required.");
 
         List<MavenProject> modules = moduleProjects(executionProject, reactorProjects);
-        if (modules.size() <= 1) {
+        if (modules.isEmpty() || (modules.size() == 1 && modules.get(0) == executionProject)) {
             return singleProjectExtractor.extract(executionProject, config);
         }
 

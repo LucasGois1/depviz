@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.gois.tools.depviz.config.DepvizConfig;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import org.apache.maven.project.MavenProject;
 import org.junit.jupiter.api.Test;
@@ -27,16 +28,35 @@ class ReactorDependencyGraphExtractorTest {
         assertThat(aggregate.scope()).isEqualTo("root");
         assertThat(aggregate.children()).extracting(child -> child.coordinate().artifactId()).containsExactly("api", "worker");
         assertThat(aggregate.children()).extracting(ExtractedDependencyNode::scope).containsExactly("module", "module");
+        assertThat(single.extractedProjects()).extracting(MavenProject::getArtifactId).containsExactly("api", "worker");
     }
 
     @Test
-    void usesSingleProjectExtractionWhenNoModuleProjectsAreAvailable() throws Exception {
+    void createsVirtualReactorRootForSingleModuleRootPom() throws Exception {
+        MavenProject root = project("com.acme", "platform", "1.0.0", "pom");
+        MavenProject api = project("com.acme", "api", "1.0.0", "jar");
+        TestSingleExtractor single = new TestSingleExtractor(
+            extracted("com.acme", "api", "1.0.0", dependency("org.slf4j", "slf4j-api", "2.0.13"))
+        );
+
+        ExtractedDependencyNode aggregate = new ReactorDependencyGraphExtractor(single).extract(root, List.of(root, api), config);
+
+        assertThat(aggregate.coordinate().type()).isEqualTo("reactor");
+        assertThat(aggregate.children()).extracting(child -> child.coordinate().artifactId()).containsExactly("api");
+        assertThat(aggregate.children()).extracting(ExtractedDependencyNode::scope).containsExactly("module");
+        assertThat(single.extractedProjects()).extracting(MavenProject::getArtifactId).containsExactly("api");
+    }
+
+    @Test
+    void usesSingleProjectExtractionWhenOnlyExecutionProjectRemains() throws Exception {
         MavenProject api = project("com.acme", "api", "1.0.0", "jar");
         ExtractedDependencyNode singleRoot = extracted("com.acme", "api", "1.0.0");
+        TestSingleExtractor single = new TestSingleExtractor(singleRoot);
 
-        ExtractedDependencyNode aggregate = new ReactorDependencyGraphExtractor(new TestSingleExtractor(singleRoot)).extract(api, List.of(api), config);
+        ExtractedDependencyNode aggregate = new ReactorDependencyGraphExtractor(single).extract(api, List.of(api), config);
 
         assertThat(aggregate).isSameAs(singleRoot);
+        assertThat(single.extractedProjects()).extracting(MavenProject::getArtifactId).containsExactly("api");
     }
 
     private static MavenProject project(String groupId, String artifactId, String version, String packaging) {
@@ -58,6 +78,7 @@ class ReactorDependencyGraphExtractorTest {
 
     private static final class TestSingleExtractor implements DependencyGraphExtractor {
         private final List<ExtractedDependencyNode> roots;
+        private final List<MavenProject> extractedProjects = new ArrayList<>();
         private int index;
 
         private TestSingleExtractor(ExtractedDependencyNode... roots) {
@@ -66,7 +87,12 @@ class ReactorDependencyGraphExtractorTest {
 
         @Override
         public ExtractedDependencyNode extract(MavenProject project, DepvizConfig config) {
+            extractedProjects.add(project);
             return roots.get(index++);
+        }
+
+        private List<MavenProject> extractedProjects() {
+            return extractedProjects;
         }
     }
 }
