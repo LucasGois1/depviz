@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildAdjacency, hasSharedDependencies, recommendedInitialLayout, shouldShowAllLabelsInitially, toCytoscapeElements } from "./graph";
+import { buildAdjacency, dependencyFanIn, hasSharedDependencies, recommendedInitialLayout, shouldShowAllLabelsInitially } from "./graph";
 import type { DepvizDocument } from "./types";
 
 const sharedTargetId = "org.shared:logging:jar::2.0.0";
@@ -42,52 +42,6 @@ const document: DepvizDocument = {
   diagnostics: []
 };
 
-describe("toCytoscapeElements", () => {
-  it("creates one Cytoscape node for a shared dependency with multiple incoming edges", () => {
-    const elements = toCytoscapeElements(document);
-    const sharedNodes = elements.filter((element) => element.group === "nodes" && element.data.id === sharedTargetId);
-    const incomingEdges = elements.filter((element) => element.group === "edges" && element.data.target === sharedTargetId);
-
-    expect(sharedNodes).toHaveLength(1);
-    expect(incomingEdges.map((edgeElement) => edgeElement.data.source).sort()).toEqual([
-      "org.alpha:client:jar::1.0.0",
-      "org.beta:service:jar::1.0.0"
-    ]);
-  });
-
-  it("preserves node metadata needed by the sidebar and styling", () => {
-    const elements = toCytoscapeElements(document);
-    const root = elements.find((element) => element.group === "nodes" && element.data.id === "dev.example:demo:jar::1.0.0");
-
-    expect(root?.data).toMatchObject({
-      label: "dev.example:demo",
-      coordinate: "dev.example:demo:jar::1.0.0",
-      groupColorKey: "dev.example",
-      root: true
-    });
-  });
-
-  it("marks shared dependencies with fan-in metadata for canvas styling", () => {
-    const elements = toCytoscapeElements(document);
-    const shared = elements.find((element) => element.group === "nodes" && element.data.id === sharedTargetId);
-    const root = elements.find((element) => element.group === "nodes" && element.data.id === "dev.example:demo:jar::1.0.0");
-    const edgeToShared = elements.find((element) => element.group === "edges" && element.data.id === "alpha-shared");
-
-    expect(shared?.data).toMatchObject({
-      fanIn: 2,
-      shared: true
-    });
-    expect(shared?.classes?.split(" ")).toContain("shared");
-    expect(edgeToShared?.data).toMatchObject({
-      targetFanIn: 2,
-      sharedTarget: true
-    });
-    expect(edgeToShared?.classes?.split(" ")).toContain("to-shared");
-    expect(root?.data.fanIn).toBe(0);
-    expect(root?.classes?.split(" ")).not.toContain("shared");
-  });
-});
-
 describe("buildAdjacency", () => {
   it("indexes parents and children by shared graph node ID", () => {
     const adjacency = buildAdjacency(document);
@@ -96,6 +50,15 @@ describe("buildAdjacency", () => {
       new Set(["org.alpha:client:jar::1.0.0", "org.beta:service:jar::1.0.0"])
     );
     expect(adjacency.children.get("org.alpha:client:jar::1.0.0")).toEqual(new Set([sharedTargetId]));
+  });
+});
+
+describe("dependencyFanIn", () => {
+  it("counts unique incoming dependency parents per graph node", () => {
+    const fanIn = dependencyFanIn(document);
+
+    expect(fanIn.get(sharedTargetId)).toBe(2);
+    expect(fanIn.get("dev.example:demo:jar::1.0.0")).toBe(0);
   });
 });
 

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef } from "react";
-import cytoscape, { type Core, type ElementDefinition, type SingularElementArgument, type StylesheetCSS } from "cytoscape";
-import { cytoscapeHslColor } from "../cytoscapeStyle";
-import { toCytoscapeElements } from "../graph";
+import Sigma from "sigma";
+import { buildAdjacency } from "../graph";
+import { applySigmaGraphState, applySigmaLayout, toSigmaGraph, type SigmaEdgeAttributes, type SigmaNodeAttributes } from "../sigmaGraph";
 import type { DepvizDocument, LayoutName, VisibilityState } from "../types";
 
 interface GraphCanvasProps {
@@ -15,6 +15,8 @@ interface GraphCanvasProps {
   onSelectNode: (nodeId: string | null) => void;
 }
 
+type DepvizSigma = Sigma<SigmaNodeAttributes, SigmaEdgeAttributes>;
+
 export function GraphCanvas({
   document,
   layout,
@@ -26,9 +28,10 @@ export function GraphCanvas({
   onSelectNode
 }: GraphCanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const cyRef = useRef<Core | null>(null);
+  const rendererRef = useRef<DepvizSigma | null>(null);
   const onSelectNodeRef = useRef(onSelectNode);
-  const elements = useMemo(() => toCytoscapeElements(document), [document]);
+  const graph = useMemo(() => toSigmaGraph(document, layout), [document, layout]);
+  const adjacency = useMemo(() => buildAdjacency(document), [document]);
 
   useEffect(() => {
     onSelectNodeRef.current = onSelectNode;
@@ -39,270 +42,66 @@ export function GraphCanvas({
       return undefined;
     }
 
-    const cy = cytoscape({
-      container: containerRef.current,
-      elements: elements as ElementDefinition[],
-      style: stylesheet(showLabels),
-      layout: layoutOptions(layout),
-      minZoom: 0.08,
-      maxZoom: 3,
-      wheelSensitivity: 0.18,
-      autoungrabify: false
+    applySigmaGraphState(graph, { adjacency, selectedNodeId, showLabels, visibility });
+
+    const renderer: DepvizSigma = new Sigma(graph, containerRef.current, {
+      allowInvalidContainer: true,
+      defaultEdgeType: "arrow",
+      defaultNodeType: "circle",
+      enableEdgeEvents: false,
+      hideEdgesOnMove: false,
+      hideLabelsOnMove: true,
+      itemSizesReference: "positions",
+      labelColor: { color: "#0f172a" },
+      labelDensity: 0.16,
+      labelFont: "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+      labelGridCellSize: 92,
+      labelRenderedSizeThreshold: 7,
+      labelSize: 12,
+      labelWeight: "650",
+      minCameraRatio: 0.04,
+      minEdgeThickness: 0.55,
+      renderEdgeLabels: false,
+      renderLabels: true,
+      stagePadding: 52,
+      zIndex: true
     });
 
-    cy.on("tap", (event) => {
-      if (event.target === cy) {
-        onSelectNodeRef.current(null);
-      }
+    renderer.on("clickStage", () => {
+      onSelectNodeRef.current(null);
     });
-    cy.on("tap", "node", (event) => {
-      onSelectNodeRef.current(event.target.id());
+    renderer.on("clickNode", ({ node }) => {
+      onSelectNodeRef.current(node);
     });
 
-    cyRef.current = cy;
+    rendererRef.current = renderer;
+    renderer.getCamera().animatedReset({ duration: 220 });
+
     return () => {
-      cy.destroy();
-      cyRef.current = null;
+      renderer.kill();
+      rendererRef.current = null;
     };
-  }, [elements]);
+  }, [graph]);
 
   useEffect(() => {
-    const cy = cyRef.current;
-    if (!cy) {
-      return;
-    }
-    cy.style(stylesheet(showLabels)).update();
-  }, [showLabels]);
+    applySigmaGraphState(graph, { adjacency, selectedNodeId, showLabels, visibility });
+    rendererRef.current?.refresh();
+  }, [adjacency, graph, selectedNodeId, showLabels, visibility]);
 
   useEffect(() => {
-    const cy = cyRef.current;
-    if (!cy) {
+    const renderer = rendererRef.current;
+    if (!renderer || !viewportCommand) {
       return;
     }
-    cy.nodes().forEach((node) => {
-      node.toggleClass("is-hidden", !visibility.visibleNodeIds.has(node.id()));
-      node.toggleClass("is-match", visibility.matchingNodeIds.has(node.id()));
-    });
-    cy.edges().forEach((edge) => {
-      edge.toggleClass("is-hidden", !visibility.visibleEdgeIds.has(edge.id()));
-    });
-    runLayout(cy, layout);
-  }, [visibility, layout]);
 
-  useEffect(() => {
-    const cy = cyRef.current;
-    if (!cy) {
-      return;
-    }
-    cy.elements().removeClass("is-selected is-neighbor is-dimmed");
-    if (!selectedNodeId) {
-      return;
-    }
-    const selected = cy.getElementById(selectedNodeId);
-    if (!selected.nonempty()) {
-      return;
-    }
-    const neighborhood = selected.closedNeighborhood();
-    cy.elements().difference(neighborhood).addClass("is-dimmed");
-    neighborhood.addClass("is-neighbor");
-    selected.addClass("is-selected");
-  }, [selectedNodeId, visibility]);
-
-  useEffect(() => {
-    const cy = cyRef.current;
-    if (!cy || !viewportCommand) {
-      return;
-    }
     if (viewportCommand === "reset") {
-      runLayout(cy, layout);
-      cy.fit(cy.elements(":visible"), 48);
-      return;
+      applySigmaLayout(graph, layout);
+      applySigmaGraphState(graph, { adjacency, selectedNodeId, showLabels, visibility });
+      renderer.refresh();
     }
-    cy.fit(cy.elements(":visible"), 48);
-  }, [viewportCommand, commandNonce, layout]);
 
-  return <div ref={containerRef} className="graph-canvas" aria-label="Dependency graph canvas" />;
-}
+    renderer.getCamera().animatedReset({ duration: 220 });
+  }, [adjacency, commandNonce, graph, layout, selectedNodeId, showLabels, viewportCommand, visibility]);
 
-function runLayout(cy: Core, layout: LayoutName) {
-  cy.layout(layoutOptions(layout)).run();
-}
-
-function layoutOptions(layout: LayoutName) {
-  if (layout === "force") {
-    return {
-      name: "cose",
-      animate: false,
-      nodeRepulsion: 14000,
-      idealEdgeLength: 118,
-      componentSpacing: 88,
-      padding: 36
-    };
-  }
-  if (layout === "circle") {
-    return { name: "circle", animate: false, padding: 38 };
-  }
-  if (layout === "concentric") {
-    return {
-      name: "concentric",
-      animate: false,
-      padding: 38,
-      concentric: (node: SingularElementArgument) => Math.max(Number(node.data("fanIn") ?? 0) * 3, 8 - Number(node.data("depth") ?? 0)),
-      levelWidth: () => 2
-    };
-  }
-  return {
-    name: "breadthfirst",
-    directed: true,
-    animate: false,
-    spacingFactor: 1.62,
-    padding: 38
-  };
-}
-
-function stylesheet(showLabels: boolean): StylesheetCSS[] {
-  return [
-    {
-      selector: "node",
-      css: {
-        width: nodeSize,
-        height: nodeSize,
-        "background-color": (element: SingularElementArgument) => cytoscapeHslColor(Number(element.data("hue") ?? 0)),
-        "border-width": 2,
-        "border-color": "rgba(255,255,255,0.9)",
-        "font-family": "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
-        "font-size": 10.5,
-        "font-weight": 650,
-        color: "#0f172a",
-        label: (element: SingularElementArgument) => nodeLabel(element, showLabels),
-        "text-background-color": "rgba(255,255,255,0.88)",
-        "text-background-opacity": (element: SingularElementArgument) => (nodeLabel(element, showLabels) ? 1 : 0),
-        "text-background-padding": "4px",
-        "text-background-shape": "roundrectangle",
-        "text-margin-y": 8,
-        "text-wrap": "wrap",
-        "text-max-width": "136px",
-        "overlay-opacity": 0
-      }
-    },
-    {
-      selector: "node.root",
-      css: {
-        shape: "round-rectangle",
-        width: 42,
-        height: 42,
-        "border-width": 4,
-        "border-color": "#111827"
-      }
-    },
-    {
-      selector: "node.shared",
-      css: {
-        "border-width": 4,
-        "border-color": "#0f766e",
-        "z-index": 8
-      }
-    },
-    {
-      selector: "node.hub",
-      css: {
-        "border-width": 5,
-        "border-color": "#b45309",
-        "z-index": 10
-      }
-    },
-    {
-      selector: "node.optional",
-      css: {
-        "border-style": "dashed"
-      }
-    },
-    {
-      selector: "edge",
-      css: {
-        width: 1.7,
-        "curve-style": "bezier",
-        "target-arrow-shape": "triangle",
-        "target-arrow-color": "#64748b",
-        "line-color": "#94a3b8",
-        opacity: 0.76,
-        "arrow-scale": 0.9,
-        "overlay-opacity": 0
-      }
-    },
-    {
-      selector: "edge.to-shared",
-      css: {
-        width: (element: SingularElementArgument) => Math.min(3.4, 1.7 + Number(element.data("targetFanIn") ?? 0) * 0.22),
-        "line-color": "#0f766e",
-        "target-arrow-color": "#0f766e",
-        opacity: 0.9,
-        "z-index": 6
-      }
-    },
-    {
-      selector: "edge.optional",
-      css: {
-        "line-style": "dashed",
-        opacity: 0.55
-      }
-    },
-    {
-      selector: ".is-hidden",
-      css: {
-        display: "none"
-      }
-    },
-    {
-      selector: ".is-dimmed",
-      css: {
-        opacity: 0.24
-      }
-    },
-    {
-      selector: ".is-neighbor",
-      css: {
-        opacity: 0.95
-      }
-    },
-    {
-      selector: "node.is-match",
-      css: {
-        "border-color": "#f59e0b",
-        "border-width": 4
-      }
-    },
-    {
-      selector: "node.is-selected",
-      css: {
-        "border-color": "#020617",
-        "border-width": 5,
-        width: 54,
-        height: 54,
-        "z-index": 20
-      }
-    },
-    {
-      selector: "edge.is-neighbor",
-      css: {
-        width: 2.8,
-        opacity: 0.95,
-        "line-color": "#334155",
-        "target-arrow-color": "#334155"
-      }
-    }
-  ];
-}
-
-function nodeSize(element: SingularElementArgument): number {
-  const fanIn = Number(element.data("fanIn") ?? 0);
-  return Math.min(66, 34 + fanIn * 4);
-}
-
-function nodeLabel(element: SingularElementArgument, showLabels: boolean): string {
-  if (showLabels) {
-    return String(element.data("label") ?? "");
-  }
-  const isKeyNode = Boolean(element.data("root")) || Boolean(element.data("shared")) || Number(element.data("depth") ?? 0) <= 1;
-  return isKeyNode ? String(element.data("label") ?? "") : "";
+  return <div ref={containerRef} className="graph-canvas sigma-canvas" aria-label="Dependency graph canvas" />;
 }

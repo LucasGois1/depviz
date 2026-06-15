@@ -1,70 +1,5 @@
 import type { Adjacency, DepvizDocument, GraphNode, LayoutName } from "./types";
 
-export interface CytoscapeElement {
-  group: "nodes" | "edges";
-  data: Record<string, string | number | boolean | null>;
-  classes?: string;
-}
-
-export function toCytoscapeElements(document: DepvizDocument): CytoscapeElement[] {
-  const fanInByNodeId = dependencyFanIn(document);
-  const nodeElements = document.nodes.map((node) => ({
-    group: "nodes" as const,
-    data: {
-      id: node.id,
-      label: node.label,
-      coordinate: node.coordinate,
-      groupId: node.groupId,
-      artifactId: node.artifactId,
-      version: node.version,
-      type: node.type,
-      classifier: node.classifier,
-      scope: node.scope,
-      optional: node.optional,
-      depth: node.depth,
-      root: node.root,
-      moduleRoot: node.moduleRoot,
-      groupColorKey: node.groupColorKey,
-      fanIn: fanInByNodeId.get(node.id) ?? 0,
-      shared: (fanInByNodeId.get(node.id) ?? 0) > 1,
-      hue: colorHue(node.groupColorKey)
-    },
-    classes: [
-      node.root ? "root" : "",
-      node.moduleRoot ? "module-root" : "",
-      node.optional ? "optional" : "",
-      (fanInByNodeId.get(node.id) ?? 0) > 1 ? "shared" : "",
-      (fanInByNodeId.get(node.id) ?? 0) >= 4 ? "hub" : "",
-      `scope-${safeClassName(node.scope)}`
-    ]
-      .filter(Boolean)
-      .join(" ")
-  }));
-
-  const edgeElements = document.edges.map((edge) => ({
-    group: "edges" as const,
-    data: {
-      id: edge.id,
-      source: edge.source,
-      target: edge.target,
-      scope: edge.scope,
-      optional: edge.optional,
-      depth: edge.depth,
-      targetFanIn: fanInByNodeId.get(edge.target) ?? 0,
-      sharedTarget: (fanInByNodeId.get(edge.target) ?? 0) > 1
-    },
-    classes: [
-      edge.optional ? "optional" : "",
-      (fanInByNodeId.get(edge.target) ?? 0) > 1 ? "to-shared" : "",
-      `scope-${safeClassName(edge.scope)}`
-    ]
-      .filter(Boolean)
-      .join(" ")
-  }));
-
-  return [...nodeElements, ...edgeElements];
-}
-
 export function hasSharedDependencies(document: DepvizDocument): boolean {
   return [...dependencyFanIn(document).values()].some((fanIn) => fanIn > 1);
 }
@@ -109,7 +44,7 @@ export function buildAdjacency(document: DepvizDocument): Adjacency {
   return { parents, children, incomingEdges, outgoingEdges };
 }
 
-function dependencyFanIn(document: DepvizDocument): Map<string, number> {
+export function dependencyFanIn(document: DepvizDocument): Map<string, number> {
   const incomingSources = new Map<string, Set<string>>();
 
   for (const node of document.nodes) {
@@ -162,16 +97,4 @@ export function availableScopes(document: DepvizDocument): string[] {
     if (right === "root") return 1;
     return left.localeCompare(right);
   });
-}
-
-function colorHue(input: string): number {
-  let hash = 0;
-  for (let index = 0; index < input.length; index += 1) {
-    hash = (hash * 31 + input.charCodeAt(index)) % 360;
-  }
-  return hash;
-}
-
-function safeClassName(input: string): string {
-  return input.toLowerCase().replace(/[^a-z0-9_-]+/g, "-");
 }
