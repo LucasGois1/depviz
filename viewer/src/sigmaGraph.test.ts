@@ -78,6 +78,116 @@ describe("toSigmaGraph", () => {
     });
   });
 
+  it("serializes version update attributes without changing node identity or size", () => {
+    const versionNodeId = "org.alpha:client:jar::1.0.0";
+    const versionDocument: DepvizDocument = {
+      ...document,
+      nodes: document.nodes.map((current) =>
+        current.id === versionNodeId
+          ? {
+              ...current,
+              versionInsight: {
+                currentVersion: "1.0.0",
+                latestVersion: "2.0.0",
+                updateType: "major",
+                status: "outdated",
+                checked: true,
+                message: null
+              }
+            }
+          : current
+      )
+    };
+
+    const plainGraph = toSigmaGraph(document, "force");
+    const versionGraph = toSigmaGraph(versionDocument, "force");
+    const versionNode = versionGraph.getNodeAttributes(versionNodeId);
+
+    expect(versionGraph.nodes().sort()).toEqual(plainGraph.nodes().sort());
+    expect(versionNode).toMatchObject({
+      versionStatus: "outdated",
+      updateType: "major",
+      updateBadge: "M",
+      forceLabel: true
+    });
+    expect(versionNode.size).toBe(plainGraph.getNodeAttribute(versionNodeId, "size"));
+    expect(versionNode.baseSize).toBe(plainGraph.getNodeAttribute(versionNodeId, "baseSize"));
+  });
+
+  it("forces unavailable dependency labels while leaving current dependencies on normal label rules", () => {
+    const unavailableNodeId = "org.beta:service:jar::1.0.0";
+    const currentNodeId = sharedTargetId;
+    const versionDocument: DepvizDocument = {
+      ...document,
+      nodes: document.nodes.map((current) => {
+        if (current.id === unavailableNodeId) {
+          return {
+            ...current,
+            versionInsight: {
+              currentVersion: "1.0.0",
+              latestVersion: null,
+              updateType: "unknown",
+              status: "unavailable",
+              checked: true,
+              message: "Repository lookup failed"
+            }
+          };
+        }
+        if (current.id === currentNodeId) {
+          return {
+            ...current,
+            versionInsight: {
+              currentVersion: "2.0.0",
+              latestVersion: "2.0.0",
+              updateType: "none",
+              status: "current",
+              checked: true,
+              message: null
+            }
+          };
+        }
+        return current;
+      })
+    };
+
+    const graph = toSigmaGraph(versionDocument, "force");
+    const adjacency = buildAdjacency(versionDocument);
+    const visibility: VisibilityState = {
+      visibleNodeIds: new Set(versionDocument.nodes.map((current) => current.id)),
+      visibleEdgeIds: new Set(versionDocument.edges.map((current) => current.id)),
+      matchingNodeIds: new Set()
+    };
+
+    applySigmaGraphState(graph, { adjacency, visibility, selectedNodeId: null, showLabels: false });
+
+    expect(graph.getNodeAttributes(unavailableNodeId)).toMatchObject({
+      label: "service",
+      forceLabel: true,
+      versionStatus: "unavailable",
+      updateType: "unavailable",
+      updateBadge: "!"
+    });
+    expect(graph.getNodeAttribute(currentNodeId, "updateBadge")).toBeUndefined();
+    expect(graph.getNodeAttribute(currentNodeId, "forceLabel")).toBe(true);
+  });
+
+  it("keeps hub node sizes compact enough for the canvas", () => {
+    const hubDocument: DepvizDocument = {
+      ...document,
+      nodes: [
+        node("dev.example:demo:jar::1.0.0", "dev.example", "demo", true),
+        ...Array.from({ length: 10 }, (_, index) => node(`org.parent:parent-${index}:jar::1.0.0`, "org.parent", `parent-${index}`)),
+        node(sharedTargetId, "org.shared", "logging")
+      ],
+      edges: Array.from({ length: 10 }, (_, index) => edge(`parent-${index}-shared`, `org.parent:parent-${index}:jar::1.0.0`, sharedTargetId))
+    };
+
+    const graph = toSigmaGraph(hubDocument, "force");
+    const largestBaseSize = Math.max(...graph.nodes().map((id) => graph.getNodeAttribute(id, "baseSize")));
+
+    expect(largestBaseSize).toBeLessThanOrEqual(12);
+  });
+
   it("keeps shared dependencies in a readable central band without overlapping primary nodes", () => {
     const graph = toSigmaGraph(document, "force");
     const root = graph.getNodeAttributes("dev.example:demo:jar::1.0.0");
@@ -92,6 +202,24 @@ describe("toSigmaGraph", () => {
     expect(distance(alpha, beta)).toBeGreaterThan(1.6);
     expect(distance(alpha, shared)).toBeGreaterThan(1.6);
     expect(distance(beta, shared)).toBeGreaterThan(1.6);
+  });
+
+  it("staggers shared dependency lanes so labels do not stack on the same row", () => {
+    const deeperSharedId = "org.shared:deep-shared:jar::1.0.0";
+    const staggeredDocument: DepvizDocument = {
+      ...document,
+      nodes: [...document.nodes, node(deeperSharedId, "org.shared", "deep-shared", false, 3)],
+      edges: [
+        ...document.edges,
+        edge("alpha-deeper-shared", "org.alpha:client:jar::1.0.0", deeperSharedId, 3),
+        edge("beta-deeper-shared", "org.beta:service:jar::1.0.0", deeperSharedId, 3)
+      ]
+    };
+    const graph = toSigmaGraph(staggeredDocument, "force");
+    const firstShared = graph.getNodeAttributes(sharedTargetId);
+    const deeperShared = graph.getNodeAttributes(deeperSharedId);
+
+    expect(Math.abs(firstShared.y - deeperShared.y)).toBeGreaterThan(0.8);
   });
 });
 
@@ -114,9 +242,30 @@ describe("applySigmaGraphState", () => {
     expect(graph.getEdgeAttribute("alpha-shared", "color")).toBe("#334155");
     expect(graph.getEdgeAttribute("root-alpha", "color")).toContain("rgba");
   });
+
+  it("forces every label when all labels are enabled", () => {
+    const deepNodeId = "org.gamma:deep-helper:jar::1.0.0";
+    const deepDocument: DepvizDocument = {
+      ...document,
+      nodes: [...document.nodes, node(deepNodeId, "org.gamma", "deep-helper", false, 2)],
+      edges: [...document.edges, edge("alpha-deep", "org.alpha:client:jar::1.0.0", deepNodeId, 2)]
+    };
+    const graph = toSigmaGraph(deepDocument, "force");
+    const adjacency = buildAdjacency(deepDocument);
+    const visibility: VisibilityState = {
+      visibleNodeIds: new Set(deepDocument.nodes.map((current) => current.id)),
+      visibleEdgeIds: new Set(deepDocument.edges.map((current) => current.id)),
+      matchingNodeIds: new Set()
+    };
+
+    applySigmaGraphState(graph, { adjacency, visibility, selectedNodeId: null, showLabels: true });
+
+    expect(graph.nodes().every((id) => graph.getNodeAttribute(id, "label") === graph.getNodeAttribute(id, "baseLabel"))).toBe(true);
+    expect(graph.nodes().every((id) => graph.getNodeAttribute(id, "forceLabel"))).toBe(true);
+  });
 });
 
-function node(id: string, groupId: string, artifactId: string, root = false) {
+function node(id: string, groupId: string, artifactId: string, root = false, depth = root ? 0 : 1) {
   return {
     id,
     groupId,
@@ -126,7 +275,7 @@ function node(id: string, groupId: string, artifactId: string, root = false) {
     classifier: "",
     scope: root ? "root" : "compile",
     optional: false,
-    depth: root ? 0 : 1,
+    depth,
     root,
     moduleRoot: false,
     label: `${groupId}:${artifactId}`,
@@ -135,8 +284,8 @@ function node(id: string, groupId: string, artifactId: string, root = false) {
   };
 }
 
-function edge(id: string, source: string, target: string) {
-  return { id, source, target, scope: "compile", optional: false, depth: 1 };
+function edge(id: string, source: string, target: string, depth = 1) {
+  return { id, source, target, scope: "compile", optional: false, depth };
 }
 
 function distance(left: { x: number; y: number }, right: { x: number; y: number }): number {

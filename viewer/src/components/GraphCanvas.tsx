@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from "react";
 import Sigma from "sigma";
 import { buildAdjacency } from "../graph";
 import { applySigmaGraphState, applySigmaLayout, toSigmaGraph, type SigmaEdgeAttributes, type SigmaNodeAttributes } from "../sigmaGraph";
+import { sigmaRendererSettings } from "../sigmaSettings";
 import type { DepvizDocument, LayoutName, VisibilityState } from "../types";
 
 interface GraphCanvasProps {
@@ -44,28 +45,7 @@ export function GraphCanvas({
 
     applySigmaGraphState(graph, { adjacency, selectedNodeId, showLabels, visibility });
 
-    const renderer: DepvizSigma = new Sigma(graph, containerRef.current, {
-      allowInvalidContainer: true,
-      defaultEdgeType: "arrow",
-      defaultNodeType: "circle",
-      enableEdgeEvents: false,
-      hideEdgesOnMove: false,
-      hideLabelsOnMove: true,
-      itemSizesReference: "positions",
-      labelColor: { color: "#0f172a" },
-      labelDensity: 0.16,
-      labelFont: "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
-      labelGridCellSize: 92,
-      labelRenderedSizeThreshold: 7,
-      labelSize: 12,
-      labelWeight: "650",
-      minCameraRatio: 0.04,
-      minEdgeThickness: 0.55,
-      renderEdgeLabels: false,
-      renderLabels: true,
-      stagePadding: 52,
-      zIndex: true
-    });
+    const renderer: DepvizSigma = new Sigma(graph, containerRef.current, sigmaRendererSettings);
 
     renderer.on("clickStage", () => {
       onSelectNodeRef.current(null);

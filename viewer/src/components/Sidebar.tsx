@@ -55,6 +55,15 @@ export function Sidebar({
             </span>
           ))}
         </div>
+        {document.versionSummary?.enabled ? (
+          <div className="version-summary" aria-label="Version summary">
+            <SummaryStat label="Outdated" value={document.versionSummary.outdated} />
+            <SummaryStat label="Major" value={document.versionSummary.major} />
+            <SummaryStat label="Minor" value={document.versionSummary.minor} />
+            <SummaryStat label="Patch" value={document.versionSummary.patch} />
+            <SummaryStat label="Unavailable" value={document.versionSummary.unavailable} />
+          </div>
+        ) : null}
         <div className="top-groups">
           {topGroups.map(([groupId, count]) => (
             <div key={groupId}>

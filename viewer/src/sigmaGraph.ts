@@ -1,7 +1,10 @@
 import { MultiDirectedGraph } from "graphology";
 import circular from "graphology-layout/circular";
 import { dependencyFanIn } from "./graph";
-import type { Adjacency, DepvizDocument, GraphEdge, GraphNode, LayoutName, VisibilityState } from "./types";
+import { badgeTextForVersionInsight } from "./sigmaLabelRenderer";
+import type { Adjacency, DepvizDocument, GraphEdge, GraphNode, LayoutName, VersionInsight, VisibilityState } from "./types";
+
+export type SigmaVersionUpdateType = Exclude<VersionInsight["updateType"], "none"> | "unavailable";
 
 export interface SigmaNodeAttributes {
   id: string;
@@ -30,6 +33,9 @@ export interface SigmaNodeAttributes {
   hidden: boolean;
   highlighted: boolean;
   forceLabel: boolean;
+  versionStatus?: VersionInsight["status"];
+  updateType?: SigmaVersionUpdateType;
+  updateBadge?: string;
   zIndex: number;
 }
 
@@ -110,13 +116,15 @@ export function applySigmaGraphState(graph: SigmaDependencyGraph, params: SigmaG
     const dimmed = Boolean(selectedNodeId && !neighbor);
     const matched = visibility.matchingNodeIds.has(nodeId);
     const keyLabel = attributes.root || attributes.shared || attributes.depth <= 1;
+    const versionLabel = attributes.versionStatus === "outdated" || attributes.versionStatus === "unavailable";
+    const forceLabel = showLabels || selected || matched || keyLabel || versionLabel;
 
     graph.mergeNodeAttributes(nodeId, {
       hidden: !visible,
       highlighted: selected || matched,
       color: dimmed ? "rgba(148, 163, 184, 0.24)" : matched && !selected ? "#f59e0b" : attributes.baseColor,
-      label: showLabels || selected || matched || keyLabel ? attributes.baseLabel : "",
-      forceLabel: selected || matched || keyLabel,
+      label: forceLabel ? attributes.baseLabel : "",
+      forceLabel,
       size: selected ? Math.max(attributes.baseSize + 3, 12) : attributes.baseSize,
       zIndex: selected ? 30 : attributes.shared ? 12 : attributes.root ? 20 : 1
     });
@@ -139,9 +147,13 @@ export function applySigmaGraphState(graph: SigmaDependencyGraph, params: SigmaG
 function toSigmaNodeAttributes(node: GraphNode, fanIn: number): SigmaNodeAttributes {
   const shared = fanIn > 1;
   const hub = fanIn >= 4;
-  const baseSize = node.root ? 10.5 : shared ? Math.min(19, 9 + fanIn * 1.8) : 7;
+  const baseSize = node.root ? 8.5 : shared ? Math.min(12, 8.8 + fanIn * 0.3) : 6;
   const baseColor = node.root ? "#111827" : hub ? "#b45309" : shared ? "#0f766e" : groupColor(node.groupColorKey);
   const canvasLabel = compactCanvasLabel(node);
+  const updateBadge = badgeTextForVersionInsight(node.versionInsight ?? null) ?? undefined;
+  const versionStatus = node.versionInsight?.status;
+  const updateType = serializedUpdateType(node.versionInsight ?? null);
+  const forceLabel = node.root || shared || node.depth <= 1 || versionStatus === "outdated" || versionStatus === "unavailable";
 
   return {
     id: node.id,
@@ -169,9 +181,25 @@ function toSigmaNodeAttributes(node: GraphNode, fanIn: number): SigmaNodeAttribu
     baseColor,
     hidden: false,
     highlighted: false,
-    forceLabel: node.root || shared || node.depth <= 1,
+    forceLabel,
+    ...(versionStatus ? { versionStatus } : {}),
+    ...(updateType ? { updateType } : {}),
+    ...(updateBadge ? { updateBadge } : {}),
     zIndex: node.root ? 20 : shared ? 12 : 1
   };
+}
+
+function serializedUpdateType(insight: VersionInsight | null): SigmaVersionUpdateType | undefined {
+  if (!insight) {
+    return undefined;
+  }
+  if (insight.status === "unavailable") {
+    return "unavailable";
+  }
+  if (insight.updateType === "none") {
+    return undefined;
+  }
+  return insight.updateType;
 }
 
 function compactCanvasLabel(node: GraphNode): string {
@@ -241,7 +269,7 @@ function assignDependencyMapLayout(graph: SigmaDependencyGraph): void {
   const laneKeys = [...lanes.keys()].sort((left, right) => left - right);
   const maxLane = Math.max(...laneKeys);
   const horizontalSpacing = 3.2;
-  const verticalSpacing = 2.2;
+  const verticalSpacing = 2.7;
 
   for (const lane of laneKeys) {
     const nodes = [...(lanes.get(lane) ?? [])].sort((left, right) => {
@@ -254,7 +282,7 @@ function assignDependencyMapLayout(graph: SigmaDependencyGraph): void {
     nodes.forEach((node, index) => {
       graph.mergeNodeAttributes(node.id, {
         x: (lane - maxLane / 2) * horizontalSpacing,
-        y: centerOutOffset(index) * verticalSpacing
+        y: (centerOutOffset(index) + laneYOffset(lane)) * verticalSpacing
       });
     });
   }
@@ -276,6 +304,10 @@ function centerOutOffset(index: number): number {
   }
   const magnitude = Math.ceil(index / 2);
   return index % 2 === 1 ? magnitude : -magnitude;
+}
+
+function laneYOffset(lane: number): number {
+  return lane === 0 ? 0 : lane * 0.42;
 }
 
 function assignConcentricLayout(graph: SigmaDependencyGraph): void {

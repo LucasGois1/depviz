@@ -87,7 +87,7 @@ describe("recommendedInitialLayout", () => {
 });
 
 describe("shouldShowAllLabelsInitially", () => {
-  it("starts with key labels only when the graph has shared dependencies", () => {
+  it("starts with key labels for graphs with shared dependencies", () => {
     expect(shouldShowAllLabelsInitially(document)).toBe(false);
   });
 

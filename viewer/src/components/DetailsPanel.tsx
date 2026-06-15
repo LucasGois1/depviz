@@ -1,7 +1,8 @@
 import { Check, ChevronRight, Clipboard, Package, Split, X } from "lucide-react";
 import { useState } from "react";
 import { copyTextToClipboard, type ClipboardCopyState } from "../clipboard";
-import type { Adjacency, FilterState, GraphNode } from "../types";
+import { badgeTextForVersionInsight } from "../sigmaLabelRenderer";
+import type { Adjacency, FilterState, GraphNode, VersionInsight } from "../types";
 import { Button } from "./ui/button";
 
 interface DetailsPanelProps {
@@ -85,6 +86,8 @@ export function DetailsPanel({ adjacency, nodeById, selectedNode, filters, onSel
         <Property label="Root" value={selectedNode.root ? "yes" : "no"} />
       </section>
 
+      {selectedNode.versionInsight ? <VersionSection insight={selectedNode.versionInsight} /> : null}
+
       <NeighborList title="Depended on by" nodes={parents} empty="No visible parents. This is a root or detached node." onSelectNode={onSelectNode} />
       <NeighborList title="Depends on" nodes={children} empty="No child dependencies recorded." onSelectNode={onSelectNode} />
 
@@ -106,6 +109,53 @@ function Property({ label, value }: { label: string; value: string }) {
       <strong>{value}</strong>
     </div>
   );
+}
+
+function VersionSection({ insight }: { insight: VersionInsight }) {
+  const badge = badgeTextForVersionInsight(insight);
+
+  return (
+    <section className="version-section">
+      <div className="section-title-row">
+        <h3>Version</h3>
+        {badge ? <span className={`version-badge version-badge-${versionBadgeTone(insight)}`}>{badge}</span> : null}
+      </div>
+      <div className="version-grid">
+        <Property label="Current" value={insight.currentVersion || "-"} />
+        <Property label="Latest stable" value={insight.latestVersion || "-"} />
+        <Property label="Status" value={versionStatusText(insight)} />
+        <Property label="Update" value={versionUpdateText(insight)} />
+      </div>
+      {insight.status === "unavailable" && insight.message ? <p className="version-message">{insight.message}</p> : null}
+    </section>
+  );
+}
+
+function versionStatusText(insight: VersionInsight): string {
+  if (insight.status === "current") {
+    return "current";
+  }
+  if (insight.status === "outdated") {
+    return "outdated";
+  }
+  if (insight.status === "unavailable") {
+    return "unavailable";
+  }
+  return "unchecked";
+}
+
+function versionUpdateText(insight: VersionInsight): string {
+  if (insight.status === "unavailable") {
+    return "unavailable";
+  }
+  return insight.updateType === "none" ? "none" : insight.updateType;
+}
+
+function versionBadgeTone(insight: VersionInsight): "patch" | "minor" | "major" | "unknown" | "unavailable" {
+  if (insight.status === "unavailable") {
+    return "unavailable";
+  }
+  return insight.updateType === "none" ? "unknown" : insight.updateType;
 }
 
 function NeighborList({
