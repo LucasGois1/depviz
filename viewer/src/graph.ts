@@ -83,7 +83,7 @@ export function layoutDisplayName(layout: LayoutName): string {
     case "breadthfirst":
       return "Breadthfirst";
     case "force":
-      return "Force";
+      return "Map";
     case "circle":
       return "Circle";
     case "concentric":

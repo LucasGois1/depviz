@@ -37,6 +37,8 @@ class ViewerWriterTest {
         assertThat(html).contains("id=\"graph-root\"");
         assertThat(html).doesNotContain("https://");
         assertThat(html).doesNotContain("http://");
+        assertThat(html).containsPattern("href=\"assets/style\\.css\\?v=[a-f0-9]{12}\"");
+        assertThat(html).containsPattern("src=\"assets/app\\.js\\?v=[a-f0-9]{12}\"");
         assertThat(Files.exists(files.outputDirectory().resolve("assets/app.js"))).isTrue();
     }
 
@@ -54,7 +56,7 @@ class ViewerWriterTest {
         String html = Files.readString(files.htmlFile());
         String dataBlock = html.substring(
             html.indexOf("<script id=\"depviz-data\""),
-            html.indexOf("<script src=\"assets/app.js\"></script>")
+            html.indexOf("<script src=\"assets/app.js?v=")
         );
         assertThat(dataBlock).doesNotContain(MALICIOUS_TEXT);
         assertThat(dataBlock).doesNotContain("</ScRiPt>");

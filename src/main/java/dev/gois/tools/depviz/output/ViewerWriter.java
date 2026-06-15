@@ -11,12 +11,17 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Objects;
 
 public class ViewerWriter {
     private static final String TEMPLATE_RESOURCE = "/depviz/dependency-graph.html.tpl";
     private static final String DATA_PLACEHOLDER = "{{DEPVIZ_DATA}}";
+    private static final String APP_ASSET_PLACEHOLDER = "{{APP_ASSET}}";
+    private static final String STYLE_ASSET_PLACEHOLDER = "{{STYLE_ASSET}}";
     private static final List<String> ASSETS = List.of(
         "app.js",
         "style.css",
@@ -45,7 +50,10 @@ public class ViewerWriter {
 
         copyAssets(assetsDirectory);
 
-        String html = template().replace(DATA_PLACEHOLDER, JsonEscaper.forInlineScript(json));
+        String html = template()
+            .replace(STYLE_ASSET_PLACEHOLDER, assetReference(assetsDirectory, "style.css"))
+            .replace(APP_ASSET_PLACEHOLDER, assetReference(assetsDirectory, "app.js"))
+            .replace(DATA_PLACEHOLDER, JsonEscaper.forInlineScript(json));
         Path htmlFile = outputDirectory.resolve("dependency-graph.html");
         Files.writeString(htmlFile, html, StandardCharsets.UTF_8);
 
@@ -70,6 +78,19 @@ public class ViewerWriter {
                 }
                 Files.copy(inputStream, assetsDirectory.resolve(asset), StandardCopyOption.REPLACE_EXISTING);
             }
+        }
+    }
+
+    private static String assetReference(Path assetsDirectory, String asset) throws IOException {
+        return "assets/" + asset + "?v=" + assetHash(assetsDirectory.resolve(asset));
+    }
+
+    private static String assetHash(Path assetPath) throws IOException {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(Files.readAllBytes(assetPath));
+            return HexFormat.of().formatHex(digest, 0, 6);
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IOException("SHA-256 is not available for viewer asset hash generation.", exception);
         }
     }
 }

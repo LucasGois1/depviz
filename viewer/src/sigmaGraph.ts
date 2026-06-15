@@ -1,6 +1,5 @@
 import { MultiDirectedGraph } from "graphology";
 import circular from "graphology-layout/circular";
-import forceAtlas2 from "graphology-layout-forceatlas2";
 import { dependencyFanIn } from "./graph";
 import type { Adjacency, DepvizDocument, GraphEdge, GraphNode, LayoutName, VisibilityState } from "./types";
 
@@ -88,18 +87,7 @@ export function applySigmaLayout(graph: SigmaDependencyGraph, layout: LayoutName
   }
 
   if (layout === "force") {
-    circular.assign(graph, { center: 0, scale: Math.max(3, graph.order / 2) });
-    forceAtlas2.assign(graph, {
-      iterations: graph.order < 50 ? 150 : 90,
-      settings: {
-        adjustSizes: true,
-        barnesHutOptimize: graph.order > 80,
-        edgeWeightInfluence: 0.45,
-        gravity: 0.08,
-        scalingRatio: 9,
-        slowDown: 4
-      }
-    });
+    assignDependencyMapLayout(graph);
     return;
   }
 
@@ -153,11 +141,12 @@ function toSigmaNodeAttributes(node: GraphNode, fanIn: number): SigmaNodeAttribu
   const hub = fanIn >= 4;
   const baseSize = node.root ? 10.5 : shared ? Math.min(19, 9 + fanIn * 1.8) : 7;
   const baseColor = node.root ? "#111827" : hub ? "#b45309" : shared ? "#0f766e" : groupColor(node.groupColorKey);
+  const canvasLabel = compactCanvasLabel(node);
 
   return {
     id: node.id,
-    label: node.label,
-    baseLabel: node.label,
+    label: canvasLabel,
+    baseLabel: canvasLabel,
     coordinate: node.coordinate,
     groupId: node.groupId,
     artifactId: node.artifactId,
@@ -183,6 +172,10 @@ function toSigmaNodeAttributes(node: GraphNode, fanIn: number): SigmaNodeAttribu
     forceLabel: node.root || shared || node.depth <= 1,
     zIndex: node.root ? 20 : shared ? 12 : 1
   };
+}
+
+function compactCanvasLabel(node: GraphNode): string {
+  return node.artifactId;
 }
 
 function toSigmaEdgeAttributes(edge: GraphEdge, targetFanIn: number): SigmaEdgeAttributes {
@@ -226,6 +219,63 @@ function assignBreadthfirstLayout(graph: SigmaDependencyGraph): void {
       });
     });
   }
+}
+
+function assignDependencyMapLayout(graph: SigmaDependencyGraph): void {
+  const lanes = new Map<number, Array<{ id: string; label: string; fanIn: number; root: boolean; shared: boolean }>>();
+
+  graph.forEachNode((id, attributes) => {
+    const lane = dependencyLane(attributes);
+    lanes.set(lane, [
+      ...(lanes.get(lane) ?? []),
+      {
+        id,
+        label: attributes.baseLabel,
+        fanIn: attributes.fanIn,
+        root: attributes.root,
+        shared: attributes.shared
+      }
+    ]);
+  });
+
+  const laneKeys = [...lanes.keys()].sort((left, right) => left - right);
+  const maxLane = Math.max(...laneKeys);
+  const horizontalSpacing = 3.2;
+  const verticalSpacing = 2.2;
+
+  for (const lane of laneKeys) {
+    const nodes = [...(lanes.get(lane) ?? [])].sort((left, right) => {
+      if (left.root !== right.root) return left.root ? -1 : 1;
+      if (left.shared !== right.shared) return left.shared ? -1 : 1;
+      if (left.fanIn !== right.fanIn) return right.fanIn - left.fanIn;
+      return left.label.localeCompare(right.label);
+    });
+
+    nodes.forEach((node, index) => {
+      graph.mergeNodeAttributes(node.id, {
+        x: (lane - maxLane / 2) * horizontalSpacing,
+        y: centerOutOffset(index) * verticalSpacing
+      });
+    });
+  }
+}
+
+function dependencyLane(attributes: SigmaNodeAttributes): number {
+  if (attributes.root) {
+    return 0;
+  }
+  if (attributes.shared) {
+    return Math.max(2, attributes.depth + 1);
+  }
+  return Math.max(1, attributes.depth);
+}
+
+function centerOutOffset(index: number): number {
+  if (index === 0) {
+    return 0;
+  }
+  const magnitude = Math.ceil(index / 2);
+  return index % 2 === 1 ? magnitude : -magnitude;
 }
 
 function assignConcentricLayout(graph: SigmaDependencyGraph): void {

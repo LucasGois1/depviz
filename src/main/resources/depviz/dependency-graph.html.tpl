@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Depviz Dependency Graph</title>
-  <link rel="stylesheet" href="assets/style.css">
+  <link rel="stylesheet" href="{{STYLE_ASSET}}">
 </head>
 <body>
   <main id="graph-root" class="viewer-shell">
@@ -31,6 +31,6 @@
   </main>
 
   <script id="depviz-data" type="application/json">{{DEPVIZ_DATA}}</script>
-  <script src="assets/app.js"></script>
+  <script src="{{APP_ASSET}}"></script>
 </body>
 </html>

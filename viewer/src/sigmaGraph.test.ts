@@ -61,11 +61,13 @@ describe("toSigmaGraph", () => {
 
     expect(shared).toMatchObject({
       artifactId: "logging",
+      baseLabel: "logging",
       fanIn: 2,
       shared: true,
-      label: "org.shared:logging",
+      label: "logging",
       type: "circle"
     });
+    expect(shared.coordinate).toBe("org.shared:logging:jar::2.0.0");
     expect(shared.size).toBeGreaterThan(root.size);
     expect(Number.isFinite(shared.x)).toBe(true);
     expect(Number.isFinite(shared.y)).toBe(true);
@@ -74,6 +76,22 @@ describe("toSigmaGraph", () => {
       sharedTarget: true,
       type: "arrow"
     });
+  });
+
+  it("keeps shared dependencies in a readable central band without overlapping primary nodes", () => {
+    const graph = toSigmaGraph(document, "force");
+    const root = graph.getNodeAttributes("dev.example:demo:jar::1.0.0");
+    const alpha = graph.getNodeAttributes("org.alpha:client:jar::1.0.0");
+    const beta = graph.getNodeAttributes("org.beta:service:jar::1.0.0");
+    const shared = graph.getNodeAttributes(sharedTargetId);
+
+    expect(root.x).toBeLessThan(alpha.x);
+    expect(root.x).toBeLessThan(beta.x);
+    expect(shared.x).toBeGreaterThan(alpha.x);
+    expect(shared.x).toBeGreaterThan(beta.x);
+    expect(distance(alpha, beta)).toBeGreaterThan(1.6);
+    expect(distance(alpha, shared)).toBeGreaterThan(1.6);
+    expect(distance(beta, shared)).toBeGreaterThan(1.6);
   });
 });
 
@@ -119,4 +137,8 @@ function node(id: string, groupId: string, artifactId: string, root = false) {
 
 function edge(id: string, source: string, target: string) {
   return { id, source, target, scope: "compile", optional: false, depth: 1 };
+}
+
+function distance(left: { x: number; y: number }, right: { x: number; y: number }): number {
+  return Math.hypot(left.x - right.x, left.y - right.y);
 }

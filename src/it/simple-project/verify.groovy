@@ -10,8 +10,8 @@ assert jsonFile.isFile() : "Expected generated JSON at ${jsonFile}"
 def html = htmlFile.getText("UTF-8")
 assert html.contains('id="graph-root"') : "HTML should include the viewer root"
 assert html.contains('id="depviz-data"') : "HTML should include embedded graph data"
-assert html.contains('href="assets/style.css"') : "HTML should reference the local stylesheet"
-assert html.contains('src="assets/app.js"') : "HTML should reference the local JavaScript bundle"
+assert html ==~ /(?s).*href="assets\/style\.css\?v=[a-f0-9]{12}".*/ : "HTML should reference the cache-busted local stylesheet"
+assert html ==~ /(?s).*src="assets\/app\.js\?v=[a-f0-9]{12}".*/ : "HTML should reference the cache-busted local JavaScript bundle"
 
 def externalRuntimeReference = ~/(?i)\b(?:src|href)\s*=\s*["']https?:\/\//
 assert !externalRuntimeReference.matcher(html).find() : "HTML should not load runtime assets over HTTP(S)"
