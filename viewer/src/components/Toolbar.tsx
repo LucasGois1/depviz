@@ -88,7 +88,7 @@ export function Toolbar({
 
         {document.versionSummary?.enabled ? (
           <Select value={filters.updateMode} onValueChange={(value) => onUpdateModeChange(value as UpdateFilterMode)} label="Update filter">
-            <SelectItem value="all">All updates</SelectItem>
+            <SelectItem value="all">All dependencies</SelectItem>
             <SelectItem value="outdated">{updateLabel("Outdated", document.versionSummary, "outdated")}</SelectItem>
             <SelectItem value="major">{updateLabel("Major", document.versionSummary, "major")}</SelectItem>
             <SelectItem value="minor">{updateLabel("Minor", document.versionSummary, "minor")}</SelectItem>

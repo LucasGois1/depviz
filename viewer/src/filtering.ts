@@ -18,8 +18,9 @@ export function buildVisibility(document: DepvizDocument, filters: FilterState):
     document.nodes.filter((node) => node.root || nodePassesOptionalFilter(node, filters)).map((node) => node.id)
   );
   const reachable = reachableFromRoots(document, filters, baseAllowed, nodeById);
-  const matchingNodeIds = matchingReachableNodes(document, filters, reachable);
-  const hasNodeMatchingFilter = filters.search.trim() || filters.updateMode !== "all";
+  const updateFilteringEnabled = document.versionSummary?.enabled === true && filters.updateMode !== "all";
+  const matchingNodeIds = matchingReachableNodes(document, filters, reachable, updateFilteringEnabled);
+  const hasNodeMatchingFilter = Boolean(filters.search.trim()) || updateFilteringEnabled;
   const visibleNodeIds = hasNodeMatchingFilter
     ? expandSearchContext(matchingNodeIds, adjacency, reachable)
     : reachable;
@@ -147,17 +148,21 @@ function reachableFromRoots(
   return visible;
 }
 
-function matchingReachableNodes(document: DepvizDocument, filters: FilterState, reachable: Set<string>): Set<string> {
+function matchingReachableNodes(
+  document: DepvizDocument,
+  filters: FilterState,
+  reachable: Set<string>,
+  updateFilteringEnabled: boolean
+): Set<string> {
   const normalizedSearch = filters.search.trim().toLowerCase();
-  const hasUpdateFilter = filters.updateMode !== "all";
-  if (!normalizedSearch && !hasUpdateFilter) {
+  if (!normalizedSearch && !updateFilteringEnabled) {
     return new Set();
   }
   return new Set(
     document.nodes
       .filter((node) => reachable.has(node.id))
       .filter((node) => !normalizedSearch || nodeSearchText(node).includes(normalizedSearch))
-      .filter((node) => !hasUpdateFilter || nodeMatchesUpdateMode(node, filters.updateMode))
+      .filter((node) => !updateFilteringEnabled || nodeMatchesUpdateMode(node, filters.updateMode))
       .map((node) => node.id)
   );
 }

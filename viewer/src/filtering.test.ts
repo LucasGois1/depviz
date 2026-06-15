@@ -188,6 +188,63 @@ describe("buildVisibility", () => {
     expect(visibility.visibleEdgeIds).toEqual(new Set(versionDocument.edges.map((versionEdge) => versionEdge.id)));
     expect(visibility.matchingNodeIds).toEqual(new Set());
   });
+
+  it("treats update mode as all when version summary is missing", () => {
+    const { versionSummary, ...documentWithoutVersionSummary } = versionDocument;
+    const visibility = buildVisibility(documentWithoutVersionSummary, {
+      ...createFilterState(),
+      updateMode: "outdated"
+    });
+
+    expect(versionSummary?.enabled).toBe(true);
+    expect(visibility.visibleNodeIds).toEqual(new Set(versionDocument.nodes.map((versionNode) => versionNode.id)));
+    expect(visibility.visibleEdgeIds).toEqual(new Set(versionDocument.edges.map((versionEdge) => versionEdge.id)));
+    expect(visibility.matchingNodeIds).toEqual(new Set());
+  });
+
+  it("treats update mode as all when version summary is disabled", () => {
+    const disabledVersionDocument: DepvizDocument = {
+      ...versionDocument,
+      versionSummary: {
+        ...versionDocument.versionSummary!,
+        enabled: false
+      }
+    };
+    const visibility = buildVisibility(disabledVersionDocument, {
+      ...createFilterState(),
+      updateMode: "outdated"
+    });
+
+    expect(visibility.visibleNodeIds).toEqual(new Set(versionDocument.nodes.map((versionNode) => versionNode.id)));
+    expect(visibility.visibleEdgeIds).toEqual(new Set(versionDocument.edges.map((versionEdge) => versionEdge.id)));
+    expect(visibility.matchingNodeIds).toEqual(new Set());
+  });
+
+  it("does not reveal an outdated descendant hidden behind a collapsed ancestor", () => {
+    const visibility = buildVisibility(versionDocument, {
+      ...createFilterState(),
+      updateMode: "outdated",
+      collapsedNodeIds: new Set(["org.current:platform:jar::1.0.0"])
+    });
+
+    expect(visibility.visibleNodeIds).not.toContain("org.major:api:jar::1.0.0");
+    expect(visibility.visibleNodeIds).not.toContain("org.patch:helper:jar::1.0.0");
+    expect(visibility.visibleNodeIds).toEqual(new Set(["dev.example:demo:jar::1.0.0", "org.test:fixture:jar::1.0.0"]));
+    expect(visibility.matchingNodeIds).toEqual(new Set(["org.test:fixture:jar::1.0.0"]));
+    expect(visibility.visibleEdgeIds).toEqual(new Set(["root-fixture"]));
+  });
+
+  it("intersects search matches with update mode matches", () => {
+    const visibility = buildVisibility(versionDocument, {
+      ...createFilterState(),
+      search: "platform",
+      updateMode: "outdated"
+    });
+
+    expect(visibility.visibleNodeIds).toEqual(new Set());
+    expect(visibility.matchingNodeIds).toEqual(new Set());
+    expect(visibility.visibleEdgeIds).toEqual(new Set());
+  });
 });
 
 function node(
