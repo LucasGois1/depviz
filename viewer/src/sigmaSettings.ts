@@ -7,7 +7,7 @@ export const sigmaRendererSettings = {
   defaultDrawNodeLabel: drawDependencyNodeLabel,
   enableEdgeEvents: false,
   hideEdgesOnMove: false,
-  hideLabelsOnMove: false,
+  hideLabelsOnMove: true,
   itemSizesReference: "positions",
   labelColor: { color: "#0f172a" },
   labelDensity: 0.16,
@@ -20,6 +20,6 @@ export const sigmaRendererSettings = {
   minEdgeThickness: 0.55,
   renderEdgeLabels: false,
   renderLabels: true,
-  stagePadding: 96,
+  stagePadding: 52,
   zIndex: true
 } as const;

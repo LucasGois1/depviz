@@ -7,13 +7,12 @@ describe("sigmaRendererSettings", () => {
     expect(sigmaRendererSettings.itemSizesReference).toBe("positions");
   });
 
-  it("keeps enough viewport padding for labels near the canvas edge", () => {
-    expect(sigmaRendererSettings.stagePadding).toBeGreaterThanOrEqual(88);
-    expect(sigmaRendererSettings.stagePadding).toBeLessThanOrEqual(120);
+  it("preserves the base viewport padding", () => {
+    expect(sigmaRendererSettings.stagePadding).toBe(52);
   });
 
-  it("keeps labels visible during camera movement for first-load readability", () => {
-    expect(sigmaRendererSettings.hideLabelsOnMove).toBe(false);
+  it("preserves the base label movement behavior", () => {
+    expect(sigmaRendererSettings.hideLabelsOnMove).toBe(true);
   });
 
   it("uses the dependency label renderer to keep edge labels inside the canvas", () => {
