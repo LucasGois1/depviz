@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildAdjacency } from "./graph";
-import { applySigmaGraphState, toSigmaGraph } from "./sigmaGraph";
+import { applySigmaGraphState, toSigmaGraph, visibleSigmaNodeExtent } from "./sigmaGraph";
 import type { DepvizDocument, VisibilityState } from "./types";
 
 const sharedTargetId = "org.shared:logging:jar::2.0.0";
@@ -224,6 +224,32 @@ describe("toSigmaGraph", () => {
 
     expect(firstShared.y).toBe(0);
     expect(deeperShared.y).toBe(0);
+  });
+
+  it("computes the graph extent from visible nodes only", () => {
+    const graph = toSigmaGraph(document, "force");
+    const hiddenNodeId = "org.alpha:client:jar::1.0.0";
+    graph.mergeNodeAttributes(hiddenNodeId, { hidden: true, x: 1_000, y: 1_000 });
+
+    const visibleNodes = graph.nodes().filter((nodeId) => nodeId !== hiddenNodeId);
+    const visibleX = visibleNodes.map((nodeId) => graph.getNodeAttribute(nodeId, "x"));
+    const visibleY = visibleNodes.map((nodeId) => graph.getNodeAttribute(nodeId, "y"));
+
+    expect(visibleSigmaNodeExtent(graph)).toEqual({
+      minX: Math.min(...visibleX),
+      maxX: Math.max(...visibleX),
+      minY: Math.min(...visibleY),
+      maxY: Math.max(...visibleY)
+    });
+  });
+
+  it("returns no extent when every node is hidden", () => {
+    const graph = toSigmaGraph(document, "force");
+    graph.forEachNode((nodeId) => {
+      graph.mergeNodeAttributes(nodeId, { hidden: true });
+    });
+
+    expect(visibleSigmaNodeExtent(graph)).toBeNull();
   });
 });
 

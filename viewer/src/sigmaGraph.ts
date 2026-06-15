@@ -59,6 +59,13 @@ export interface SigmaEdgeAttributes {
 
 export type SigmaDependencyGraph = MultiDirectedGraph<SigmaNodeAttributes, SigmaEdgeAttributes>;
 
+export interface SigmaNodeExtent {
+  minX: number;
+  maxX: number;
+  minY: number;
+  maxY: number;
+}
+
 export interface SigmaGraphStateParams {
   adjacency: Adjacency;
   visibility: VisibilityState;
@@ -143,6 +150,30 @@ export function applySigmaGraphState(graph: SigmaDependencyGraph, params: SigmaG
       zIndex: neighbor ? 20 : attributes.sharedTarget ? 8 : 1
     });
   });
+}
+
+export function visibleSigmaNodeExtent(graph: SigmaDependencyGraph): SigmaNodeExtent | null {
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+
+  graph.forEachNode((_nodeId, attributes) => {
+    if (attributes.hidden) {
+      return;
+    }
+
+    minX = Math.min(minX, attributes.x);
+    maxX = Math.max(maxX, attributes.x);
+    minY = Math.min(minY, attributes.y);
+    maxY = Math.max(maxY, attributes.y);
+  });
+
+  if (!Number.isFinite(minX) || !Number.isFinite(maxX) || !Number.isFinite(minY) || !Number.isFinite(maxY)) {
+    return null;
+  }
+
+  return { minX, maxX, minY, maxY };
 }
 
 function toSigmaNodeAttributes(node: GraphNode, fanIn: number): SigmaNodeAttributes {
