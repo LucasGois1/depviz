@@ -25,6 +25,18 @@ assert artifactIds.contains("spring-webmvc") : "JSON should include the spring-w
 assert artifactIds.contains("spring-jdbc") : "JSON should include the spring-jdbc dependency node"
 assert artifactIds.contains("spring-core") : "JSON should include the shared spring-core dependency node"
 
+assert json.versionSummary.enabled == true : "Default generation should enable version update metadata"
+assert json.versionSummary.checked > 0 : "Default generation should check at least one dependency version"
+
+def dependencyNodes = json.nodes.findAll { !it.root }
+assert dependencyNodes : "Expected dependency nodes beyond the root project"
+assert dependencyNodes.every { it.versionInsight != null } :
+    "Dependency nodes should include version insight metadata when update checks are enabled"
+
+def statuses = dependencyNodes.collect { it.versionInsight.status } as Set
+assert statuses.any { it in ["current", "outdated", "unavailable"] } :
+    "Expected at least one resolved or unavailable version insight status"
+
 def incomingByTarget = json.edges.groupBy { it.target }
 def sharedNodes = json.nodes.findAll { node ->
     (incomingByTarget[node.id] ?: []).collect { it.source }.toSet().size() > 1

@@ -9,7 +9,7 @@ It writes a self-contained HTML viewer plus the dependency graph JSON and static
 - Maven 3.9+
 - Java 17+
 
-The runtime viewer does not require Node.js, a local server, CDN access, Graphviz, an IDE, or an internet connection. Node.js is only used when building this plugin from source because the viewer is a React/Vite application bundled into the plugin artifact.
+The runtime viewer does not require Node.js, a local server, CDN access, Graphviz, an IDE, or an internet connection. Node.js is only used when building this plugin from source because the viewer is a React/Vite application bundled into the plugin artifact. Version update checks, when enabled, use Maven repository metadata while the graph is being generated; the generated viewer remains static and makes no runtime network calls.
 
 ## Build Locally
 
@@ -84,11 +84,14 @@ mvn dev.gois.tools:depviz-maven-plugin:0.1.0-SNAPSHOT:open -Ddepviz.open=false
 | `depviz.layout` | `breadthfirst`, `force`, `circle`, `concentric` | `breadthfirst` | Selects the viewer's initial graph layout. The viewer also lets you switch layouts after opening the file. |
 | `depviz.nodeMode` | `artifact` | `artifact` | Renders one node per artifact coordinate. `occurrence` mode is intentionally not implemented yet. |
 | `depviz.maxInitialLabels` | positive integer | `500` | Controls whether labels are shown when the viewer first loads. Labels start enabled when the graph has at most this many nodes. |
+| `depviz.checkUpdates` | `true`, `false` | `true` | Checks Maven repository metadata during generation and adds dependency version insights to the graph document. Set to `false` to skip update checks when repository access is slow, unavailable, or not desired. |
 | `depviz.includes` | comma-separated coordinate patterns | none | Keeps paths and branches containing matching dependencies, then prunes nonmatching descendants. Patterns support `*` wildcards and must be either `groupId:artifactId` or `groupId:artifactId:type:version`. |
 | `depviz.excludes` | comma-separated coordinate patterns | none | Removes matching dependency subtrees. Patterns support `*` wildcards and must be either `groupId:artifactId` or `groupId:artifactId:type:version`. |
 | `depviz.outputDirectory` | filesystem path | `target/depviz` | Directory where the HTML, JSON, and assets are written. |
 
 Include and exclude patterns are matched segment-by-segment against dependency coordinates. For example, `org.springframework:*` matches every artifact in the `org.springframework` group, while `*:junit` matches any dependency with artifactId `junit`.
+
+When `depviz.checkUpdates=true`, Depviz asks Maven for available artifact versions through the configured repositories during generation. If metadata cannot be resolved, generation still completes and records unavailable update metadata plus diagnostics in the output. Use `-Ddepviz.checkUpdates=false` as an escape hatch for offline work, restricted networks, or faster local generation without version insights.
 
 ## Output Files
 
@@ -122,12 +125,16 @@ The generated viewer supports:
 - search by coordinate-related fields such as groupId, artifactId, version, scope, type, classifier, label, display coordinate, and node ID
 - scope filters based on scopes present in the generated graph
 - optional dependency filtering
+- update status badges for dependency nodes when version checks are enabled
+- update filters for outdated, major, minor, patch, unknown, and unavailable dependencies
 - label visibility control
 - layout switching between breadth-first, force, circle, and concentric layouts
 - selected node details, direct parent and child dependencies, and collapse/expand controls
+- version details for selected dependencies, including latest known version, update type, and lookup status
 - path-to-root inspection for selected dependencies
 - graph summary counts by scope and top group IDs
 - diagnostics when Maven dependency extraction exposes warnings or errors
+- diagnostics when Maven repository metadata cannot be resolved for update checks
 
 ## Troubleshooting
 
@@ -175,6 +182,14 @@ For very large graphs, labels start hidden when the node count is above `depviz.
 mvn depviz:open -Ddepviz.maxInitialLabels=250
 ```
 
+### Version checks are slow or unavailable
+
+Update metadata is collected during generation from Maven repository metadata. The generated HTML and JavaScript do not call Maven Central or any other repository at runtime. To generate the same dependency graph without update badges, update filters, or version details:
+
+```bash
+mvn depviz:open -Ddepviz.checkUpdates=false
+```
+
 ### A configuration value is rejected
 
 Check the accepted values in the configuration table. The plugin fails fast for invalid scopes, layouts, boolean values, node modes, and non-positive or non-integer label thresholds.
@@ -183,9 +198,9 @@ Check the accepted values in the configuration table. The plugin fails fast for 
 
 Depviz is designed for local development. It reads dependency metadata from the Maven project being analyzed and writes generated files to the configured output directory.
 
-The generated viewer is offline: it loads local JavaScript and CSS from the generated `assets/` directory and does not need a server, CDN, or network access to render the graph.
+The generated viewer is offline: it loads local JavaScript and CSS from the generated `assets/` directory and does not need a server, CDN, or network access to render the graph. Version checks happen only during Maven generation when `depviz.checkUpdates=true`.
 
-The generated JSON may include project coordinates, dependency coordinates, versions, scopes, module information, diagnostics, and the Maven project base directory. Treat `dependency-graph.json` and `dependency-graph.html` as project metadata, and do not publish them unless that metadata is acceptable to share.
+The generated JSON may include project coordinates, dependency coordinates, versions, scopes, module information, diagnostics, version insights, update metadata, Maven repository lookup failure messages, and the Maven project base directory. Treat `dependency-graph.json` and `dependency-graph.html` as project metadata, and do not publish them unless that metadata is acceptable to share.
 
 ## Known Limitations
 
