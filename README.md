@@ -19,14 +19,14 @@ From this repository:
 mvn -q -DskipTests=false install
 ```
 
-This builds and installs `dev.gois.tools:depviz-maven-plugin:0.1.0-SNAPSHOT` into your local Maven repository.
+This builds and installs `io.github.lucasgois1.depviz:depviz-maven-plugin:0.1.0-SNAPSHOT` into your local Maven repository.
 
 ## Usage
 
 After the plugin is installed locally, run it from any Maven project you want to inspect:
 
 ```bash
-mvn dev.gois.tools:depviz-maven-plugin:0.1.0-SNAPSHOT:open
+mvn io.github.lucasgois1.depviz:depviz-maven-plugin:0.1.0-SNAPSHOT:open
 ```
 
 If your Maven setup resolves the `depviz` plugin prefix, the short form is:
@@ -78,7 +78,7 @@ mvn depviz:open -Ddepviz.snykJson=target/snyk.json
 Use the fully qualified plugin coordinate when the short prefix is unavailable:
 
 ```bash
-mvn dev.gois.tools:depviz-maven-plugin:0.1.0-SNAPSHOT:open -Ddepviz.open=false
+mvn io.github.lucasgois1.depviz:depviz-maven-plugin:0.1.0-SNAPSHOT:open -Ddepviz.open=false
 ```
 
 ## Snyk Vulnerability Insights
@@ -169,7 +169,7 @@ The generated viewer supports:
 Use the fully qualified coordinate:
 
 ```bash
-mvn dev.gois.tools:depviz-maven-plugin:0.1.0-SNAPSHOT:open
+mvn io.github.lucasgois1.depviz:depviz-maven-plugin:0.1.0-SNAPSHOT:open
 ```
 
 If the artifact is not installed locally yet, build this repository first:

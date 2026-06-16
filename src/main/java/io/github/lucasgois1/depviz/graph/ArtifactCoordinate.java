@@ -1,0 +1,28 @@
+package io.github.lucasgois1.depviz.graph;
+
+/**
+ * Immutable dependency coordinate. When built from Maven artifacts, {@code version} should be the Maven baseVersion so
+ * snapshot coordinates remain stable across timestamped resolved versions.
+ */
+public record ArtifactCoordinate(
+    String groupId,
+    String artifactId,
+    String type,
+    String classifier,
+    String version
+) {
+    public ArtifactCoordinate {
+        groupId = required(groupId, "groupId");
+        artifactId = required(artifactId, "artifactId");
+        type = type == null || type.isBlank() ? "jar" : type.trim();
+        classifier = classifier == null ? "" : classifier.trim();
+        version = required(version, "version");
+    }
+
+    private static String required(String value, String name) {
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException(name + " is required.");
+        }
+        return value.trim();
+    }
+}

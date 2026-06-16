@@ -10,13 +10,13 @@ The tool is for local developer exploration. It must not require an IDE, Graphvi
 
 - Java baseline: 17.
 - Maven baseline: Maven 3.9+.
-- Plugin coordinates: `dev.gois.tools:depviz-maven-plugin:0.1.0-SNAPSHOT`.
+- Plugin coordinates: `io.github.lucasgois1.depviz:depviz-maven-plugin:0.1.0-SNAPSHOT`.
 - Packaging: `maven-plugin`.
 - Goal: `open`.
 - Default command during local development:
 
 ```bash
-mvn dev.gois.tools:depviz-maven-plugin:0.1.0-SNAPSHOT:open
+mvn io.github.lucasgois1.depviz:depviz-maven-plugin:0.1.0-SNAPSHOT:open
 ```
 
 Configured/published usage:
@@ -281,7 +281,7 @@ Manual verification before declaring completion should include:
 ```bash
 mvn -q -DskipTests=false test
 mvn -q -DskipTests=false install
-mvn dev.gois.tools:depviz-maven-plugin:0.1.0-SNAPSHOT:open -Ddepviz.open=false
+mvn io.github.lucasgois1.depviz:depviz-maven-plugin:0.1.0-SNAPSHOT:open -Ddepviz.open=false
 ```
 
 Then open the generated HTML and verify pan, zoom, drag, search, filters, node details, neighborhood highlighting, layout switch, path-to-root, collapse behavior, and offline operation.

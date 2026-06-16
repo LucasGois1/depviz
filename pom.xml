@@ -4,14 +4,14 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>dev.gois.tools</groupId>
+  <groupId>io.github.lucasgois1.depviz</groupId>
   <artifactId>depviz-maven-plugin</artifactId>
   <version>0.1.0-SNAPSHOT</version>
   <packaging>maven-plugin</packaging>
 
   <name>Depviz Maven Plugin</name>
   <description>Offline interactive Maven dependency graph viewer.</description>
-  <url>https://github.com/lucasgois/depviz</url>
+  <url>https://github.com/lucasgois1/depviz</url>
 
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -177,7 +177,7 @@
           <settingsFile>src/it/settings.xml</settingsFile>
           <postBuildHookScript>verify</postBuildHookScript>
           <goals>
-            <goal>dev.gois.tools:depviz-maven-plugin:${project.version}:open</goal>
+            <goal>io.github.lucasgois1.depviz:depviz-maven-plugin:${project.version}:open</goal>
           </goals>
           <properties>
             <depviz.open>false</depviz.open>
