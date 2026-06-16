@@ -76,6 +76,38 @@ class SnykRunnerTest {
     }
 
     @Test
+    void importsConfiguredRelativeJsonReportFromWorkingDirectory() throws Exception {
+        Path report = tempDir.resolve("reports").resolve("snyk.json");
+        Files.createDirectories(report.getParent());
+        Files.writeString(report, """
+            {
+              "vulnerabilities": [
+                {
+                  "id": "SNYK-JAVA-RELATIVE-1",
+                  "severity": "medium",
+                  "title": "Relative report vulnerability",
+                  "packageName": "org.example:relative-lib",
+                  "version": "2.0.0"
+                }
+              ]
+            }
+            """);
+        DepvizConfig config = DepvizConfig.fromRaw(
+            null, "false", null, null, null, null, null, null, tempDir,
+            "true", "reports/snyk.json", tempDir.resolve("missing-snyk").toString(), null, null
+        );
+
+        SecurityCheckResult result = new SnykRunner().run(config, tempDir);
+
+        assertThat(result.checked()).isTrue();
+        assertThat(result.findings()).singleElement().satisfies(finding -> {
+            assertThat(finding.id()).isEqualTo("SNYK-JAVA-RELATIVE-1");
+            assertThat(finding.packageName()).isEqualTo("org.example:relative-lib");
+            assertThat(finding.version()).isEqualTo("2.0.0");
+        });
+    }
+
+    @Test
     void unavailableCommandInAutoModeReturnsDiagnostic() {
         DepvizConfig config = DepvizConfig.fromRaw(
             null, "false", null, null, null, null, null, null, tempDir,

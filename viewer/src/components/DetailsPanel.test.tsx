@@ -70,7 +70,34 @@ describe("DetailsPanel", () => {
     expect(html).toContain("Fixed versions");
     expect(html).toContain("1.0.1, 1.1.0");
     expect(html).toContain("href=\"https://security.example/SNYK-JAVA-EXAMPLELIB-123\"");
+    expect(html).toContain("target=\"_blank\"");
+    expect(html).toContain("rel=\"noreferrer\"");
     expect(html).toContain("Advisory");
+  });
+
+  it("does not render advisory links for findings without a URL", () => {
+    const insight = vulnerableInsight();
+    const selectedNode = {
+      ...nodeWithUnavailableInsight(),
+      securityInsight: {
+        ...insight,
+        findings: [{ ...insight.findings[0], url: "" }]
+      }
+    };
+    const html = renderToStaticMarkup(
+      <DetailsPanel
+        adjacency={emptyAdjacency()}
+        nodeById={new Map([[selectedNode.id, selectedNode]])}
+        selectedNode={selectedNode}
+        filters={emptyFilters()}
+        onSelectNode={() => undefined}
+        onToggleCollapse={() => undefined}
+      />
+    );
+
+    expect(html).toContain("SNYK-JAVA-EXAMPLELIB-123");
+    expect(html).not.toContain("security-finding-link");
+    expect(html).not.toContain("Advisory");
   });
 });
 

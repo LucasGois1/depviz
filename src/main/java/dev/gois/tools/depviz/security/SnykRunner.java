@@ -32,7 +32,7 @@ public final class SnykRunner {
             return SecurityCheckResult.disabled();
         }
         if (config.snykJson() != null) {
-            return readJson(config.snykJson());
+            return readJson(resolveReportPath(config.snykJson(), workingDirectory));
         }
 
         Path output;
@@ -103,6 +103,13 @@ public final class SnykRunner {
                 List.of(new DiagnosticEntry("error", "snyk-json-invalid", exception.getMessage(), null))
             );
         }
+    }
+
+    private static Path resolveReportPath(Path path, Path workingDirectory) {
+        if (path.isAbsolute() || workingDirectory == null) {
+            return path;
+        }
+        return workingDirectory.resolve(path).normalize();
     }
 
     private static String classifyFailure(String stderr) {

@@ -87,7 +87,7 @@ Depviz can enrich the graph with Snyk vulnerability findings. Snyk is contacted 
 
 Security findings do not fail `depviz:open`. Mapped findings appear in the viewer as graph badges, security filters, summary counts, and selected-node details. If Snyk cannot run, authentication fails, JSON cannot be read, or findings cannot be mapped to graph nodes, generation still completes and records security diagnostics in the graph output.
 
-Use `depviz.snyk=false` to skip Snyk enrichment, `depviz.snyk=true` to explicitly run the Snyk CLI, or `depviz.snykJson=/path/to/report.json` to reuse a report generated elsewhere.
+Use `depviz.snyk=false` to skip Snyk enrichment, `depviz.snyk=true` to explicitly run the Snyk CLI, or `depviz.snykJson=/path/to/report.json` to reuse a report generated elsewhere. Relative `depviz.snykJson` paths are resolved from the Maven project directory being analyzed.
 
 ## Configuration
 
@@ -100,7 +100,7 @@ Use `depviz.snyk=false` to skip Snyk enrichment, `depviz.snyk=true` to explicitl
 | `depviz.maxInitialLabels` | positive integer | `500` | Controls whether labels are shown when the viewer first loads. Labels start enabled when the graph has at most this many nodes. |
 | `depviz.checkUpdates` | `true`, `false` | `true` | Checks Maven repository metadata during generation and adds dependency version insights to the graph document. Set to `false` to skip update checks when repository access is slow, unavailable, or not desired. |
 | `depviz.snyk` | `auto`, `true`, `false` | `auto` | Controls Snyk vulnerability enrichment. `auto` and `true` run the configured Snyk CLI command when no `depviz.snykJson` is supplied; `false` disables Snyk enrichment. |
-| `depviz.snykJson` | filesystem path | none | Reads vulnerability findings from an existing Snyk JSON report instead of running the Snyk CLI, unless `depviz.snyk=false` is also set. |
+| `depviz.snykJson` | filesystem path | none | Reads vulnerability findings from an existing Snyk JSON report instead of running the Snyk CLI, unless `depviz.snyk=false` is also set. Relative paths are resolved from the Maven project directory. |
 | `depviz.snykOrg` | Snyk organization slug or ID | none | Adds `--org=<value>` to the Snyk CLI command. |
 | `depviz.snykCommand` | executable name or path | `snyk` | Selects the Snyk CLI executable to run for vulnerability checks. |
 | `depviz.snykAllProjects` | `true`, `false` | `false` | Adds `--all-projects` to the Snyk CLI command when set to `true`. |
@@ -224,7 +224,7 @@ Snyk enrichment happens during Maven generation. The generated HTML and JavaScri
 mvn depviz:open -Ddepviz.snyk=false
 ```
 
-If your environment cannot run the Snyk CLI during generation, create a Snyk JSON report separately and pass it to Depviz:
+If your environment cannot run the Snyk CLI during generation, create a Snyk JSON report separately and pass it to Depviz. Relative paths are resolved from the Maven project directory:
 
 ```bash
 mvn depviz:open -Ddepviz.snykJson=target/snyk.json
