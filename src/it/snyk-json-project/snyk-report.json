@@ -1,0 +1,14 @@
+{
+  "ok": false,
+  "vulnerabilities": [
+    {
+      "id": "SNYK-JAVA-ORGSLF4J-TEST-1",
+      "severity": "high",
+      "title": "High fixture vulnerability",
+      "packageName": "org.slf4j:slf4j-api",
+      "version": "2.0.13",
+      "fixedIn": ["2.0.17"],
+      "url": "https://security.snyk.io/vuln/SNYK-JAVA-ORGSLF4J-TEST-1"
+    }
+  ]
+}
