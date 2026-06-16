@@ -288,6 +288,22 @@ describe("buildVisibility", () => {
     );
   });
 
+  it("does not reveal descendants of security matches", () => {
+    const filters = { ...createFilterState(), securityMode: "vulnerable" as const };
+    const visibility = buildVisibility(descendantSecurityDocument, filters);
+
+    expect(visibility.matchingNodeIds).toEqual(new Set(["org.shared:shared-lib:jar::2.0.0"]));
+    expect([...visibility.visibleNodeIds].sort()).toEqual(
+      [
+        "com.acme:api:jar::1.0.0",
+        "com.acme:platform-reactor:reactor::1.0.0",
+        "org.shared:shared-lib:jar::2.0.0"
+      ].sort()
+    );
+    expect(visibility.visibleNodeIds).not.toContain("org.child:safe-child:jar::1.0.0");
+    expect(visibility.visibleEdgeIds).toEqual(new Set(["reactor-api", "api-shared"]));
+  });
+
   it("does not apply security filtering when security summary is absent", () => {
     const { securitySummary, ...documentWithoutSecurity } = securityDocument;
     const filters = { ...createFilterState(), securityMode: "high" as const };
@@ -476,6 +492,49 @@ const optionalSecurityDocument: DepvizDocument = {
     edge("reactor-api", "com.acme:platform-reactor:reactor::1.0.0", "com.acme:api:jar::1.0.0", "module", false),
     edge("api-safe", "com.acme:api:jar::1.0.0", "org.safe:base-lib:jar::1.0.0", "compile", false),
     edge("api-shared", "com.acme:api:jar::1.0.0", "org.shared:shared-lib:jar::2.0.0", "compile", true)
+  ]
+};
+
+const descendantSecurityDocument: DepvizDocument = {
+  ...securityDocument,
+  summary: {
+    nodeCount: 4,
+    edgeCount: 3,
+    nodesByScope: { root: 1, module: 1, compile: 2 },
+    nodesByGroupId: {
+      "com.acme": 2,
+      "org.child": 1,
+      "org.shared": 1
+    }
+  },
+  nodes: [
+    securityNode(
+      "com.acme:platform-reactor:reactor::1.0.0",
+      "com.acme",
+      "platform-reactor",
+      "reactor",
+      "root",
+      false,
+      true
+    ),
+    securityNode("com.acme:api:jar::1.0.0", "com.acme", "api", "jar", "module", false, false, true),
+    securityNode("org.shared:shared-lib:jar::2.0.0", "org.shared", "shared-lib", "jar", "compile", true),
+    securityNode("org.child:safe-child:jar::1.0.0", "org.child", "safe-child", "jar", "compile", false)
+  ],
+  edges: [
+    edge("reactor-api", "com.acme:platform-reactor:reactor::1.0.0", "com.acme:api:jar::1.0.0", "module", false),
+    edge("api-shared", "com.acme:api:jar::1.0.0", "org.shared:shared-lib:jar::2.0.0", "compile", false),
+    edge("shared-safe-child", "org.shared:shared-lib:jar::2.0.0", "org.child:safe-child:jar::1.0.0", "compile", false)
+  ],
+  paths: [
+    {
+      target: "org.shared:shared-lib:jar::2.0.0",
+      nodeIds: [
+        "com.acme:platform-reactor:reactor::1.0.0",
+        "com.acme:api:jar::1.0.0",
+        "org.shared:shared-lib:jar::2.0.0"
+      ]
+    }
   ]
 };
 

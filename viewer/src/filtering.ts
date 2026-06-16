@@ -33,7 +33,7 @@ export function buildVisibility(document: DepvizDocument, filters: FilterState):
   const matchingNodeIds = matchingReachableNodes(document, filters, reachable, updateFilteringEnabled, securityFilteringEnabled);
   const hasNodeMatchingFilter = Boolean(filters.search.trim()) || updateFilteringEnabled || securityFilteringEnabled;
   const visibleNodeIds = hasNodeMatchingFilter
-    ? expandSearchContext(matchingNodeIds, adjacency, reachable)
+    ? expandFilterContext(matchingNodeIds, adjacency, reachable, !securityFilteringEnabled)
     : reachable;
 
   const visibleEdgeIds = new Set(
@@ -207,16 +207,19 @@ function matchingReachableNodes(
   );
 }
 
-function expandSearchContext(
+function expandFilterContext(
   matchingNodeIds: Set<string>,
   adjacency: ReturnType<typeof buildAdjacency>,
-  reachable: Set<string>
+  reachable: Set<string>,
+  includeChildren: boolean
 ): Set<string> {
   const expanded = new Set<string>();
   for (const nodeId of matchingNodeIds) {
     expanded.add(nodeId);
     collect(nodeId, adjacency.parents, reachable, expanded);
-    collect(nodeId, adjacency.children, reachable, expanded);
+    if (includeChildren) {
+      collect(nodeId, adjacency.children, reachable, expanded);
+    }
   }
   return expanded;
 }
