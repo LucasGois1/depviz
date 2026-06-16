@@ -43,7 +43,7 @@ public record CliOptions(
         for (int index = 1; index < list.size(); index++) {
             String arg = list.get(index);
             switch (arg) {
-                case "--project-dir" -> projectDir = Path.of(requireValue(list, ++index, arg));
+                case "--project-dir" -> projectDir = resolveProjectDir(currentDirectory, requireValue(list, ++index, arg));
                 case "--tool" -> tool = parseTool(requireValue(list, ++index, arg));
                 case "--scope" -> scope = requireValue(list, ++index, arg);
                 case "--open" -> open = true;
@@ -63,10 +63,18 @@ public record CliOptions(
     }
 
     private static String requireValue(List<String> args, int index, String option) {
-        if (index >= args.size()) {
+        if (index >= args.size() || args.get(index).startsWith("--")) {
             throw new IllegalArgumentException(option + " requires a value.");
         }
         return args.get(index);
+    }
+
+    private static Path resolveProjectDir(Path currentDirectory, String value) {
+        Path path = Path.of(value);
+        if (path.isAbsolute()) {
+            return path;
+        }
+        return currentDirectory.resolve(path).normalize();
     }
 
     private static BuildTool parseTool(String value) {

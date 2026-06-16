@@ -1,6 +1,7 @@
 package io.github.lucasgois1.depviz.cli;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
@@ -44,5 +45,39 @@ class CliOptionsTest {
         assertThat(parsed.snykOrg()).isEqualTo("acme");
         assertThat(parsed.snykAllProjects()).isTrue();
         assertThat(parsed.snykCommand()).isEqualTo("/opt/bin/snyk");
+    }
+
+    @Test
+    void resolvesRelativeProjectDirAgainstCurrentDirectory() {
+        CliOptions parsed = CliOptions.parse(new String[] {"open", "--project-dir", "app"}, Path.of("/tmp/project"));
+        assertThat(parsed.projectDir()).isEqualTo(Path.of("/tmp/project/app").normalize());
+    }
+
+    @Test
+    void rejectsMissingValueForValueTakingOption() {
+        assertThatThrownBy(() -> CliOptions.parse(new String[] {"open", "--output"}, Path.of("/tmp/project")))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("--output requires a value.");
+    }
+
+    @Test
+    void rejectsOptionTokenAsValue() {
+        assertThatThrownBy(() -> CliOptions.parse(new String[] {"open", "--output", "--no-browser"}, Path.of("/tmp/project")))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("--output requires a value.");
+    }
+
+    @Test
+    void rejectsUnknownOption() {
+        assertThatThrownBy(() -> CliOptions.parse(new String[] {"open", "--wat"}, Path.of("/tmp/project")))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("Unknown option: --wat");
+    }
+
+    @Test
+    void rejectsInvalidTool() {
+        assertThatThrownBy(() -> CliOptions.parse(new String[] {"open", "--tool", "ant"}, Path.of("/tmp/project")))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("--tool must be maven or gradle.");
     }
 }
