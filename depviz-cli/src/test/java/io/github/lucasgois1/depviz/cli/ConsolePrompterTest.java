@@ -47,4 +47,14 @@ class ConsolePrompterTest {
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("Invalid selection: x");
     }
+
+    @Test
+    void rejectsEmptyInput() {
+        ByteArrayInputStream input = new ByteArrayInputStream(new byte[0]);
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+
+        assertThatThrownBy(() -> new ConsolePrompter(input, new PrintStream(output)).chooseBuildTool())
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("No selection provided.");
+    }
 }

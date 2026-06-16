@@ -3,8 +3,10 @@ package io.github.lucasgois1.depviz.cli;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
+import java.util.List;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.charset.StandardCharsets;
@@ -32,6 +34,18 @@ class MainTest {
         assertThatThrownBy(() -> Main.run(new String[] {"open"}, dir, false))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("Both Maven and Gradle were detected. Re-run with --tool maven or --tool gradle.");
+    }
+
+    @Test
+    void delegatesInteractiveAmbiguousSelectionToPrompter() {
+        CliOptions options = new CliOptions(dir, null, "runtime", true, null, null, null, null, null, false, null);
+        ProjectDetector.DetectionResult detection =
+            new ProjectDetector.DetectionResult(List.of(BuildTool.MAVEN, BuildTool.GRADLE));
+        ConsolePrompter prompter = new ConsolePrompter(new ByteArrayInputStream("2\n".getBytes()), new PrintStream(new ByteArrayOutputStream()));
+
+        BuildTool tool = Main.selectTool(options, detection, true, prompter);
+
+        assertThat(tool).isEqualTo(BuildTool.GRADLE);
     }
 
     @Test

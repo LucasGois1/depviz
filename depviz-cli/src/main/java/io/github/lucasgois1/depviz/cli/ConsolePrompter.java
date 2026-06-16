@@ -17,11 +17,15 @@ public final class ConsolePrompter {
         output.println("Depviz found both Maven and Gradle in this directory.");
         output.println();
         output.println("1. Maven (pom.xml)");
-        output.println("2. Gradle (build.gradle / settings.gradle)");
+        output.println("2. Gradle (build.gradle[.kts] / settings.gradle[.kts])");
         output.println("3. Cancel");
         output.println();
         output.print("Choose build tool: ");
-        String choice = new Scanner(input).nextLine().trim();
+        Scanner scanner = new Scanner(input);
+        if (!scanner.hasNextLine()) {
+            throw new IllegalArgumentException("No selection provided.");
+        }
+        String choice = scanner.nextLine().trim();
         return switch (choice) {
             case "1" -> BuildTool.MAVEN;
             case "2" -> BuildTool.GRADLE;
