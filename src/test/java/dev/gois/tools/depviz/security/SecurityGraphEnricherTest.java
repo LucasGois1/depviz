@@ -37,14 +37,22 @@ class SecurityGraphEnricherTest {
     @Test
     void unmappedFindingsBecomeDiagnostics() {
         GraphDocument document = fixtureDocument();
-        SecurityFinding finding = finding("SNYK-JAVA-MISSING-1", SecuritySeverity.LOW, "org.missing:lib", "9.9.9");
+        List<SecurityFinding> findings = List.of(
+            finding("SNYK-JAVA-MISSING-1", SecuritySeverity.LOW, "org.missing:lib-1", "9.9.9"),
+            finding("SNYK-JAVA-MISSING-2", SecuritySeverity.LOW, "org.missing:lib-2", "9.9.9"),
+            finding("SNYK-JAVA-MISSING-3", SecuritySeverity.LOW, "org.missing:lib-3", "9.9.9"),
+            finding("SNYK-JAVA-MISSING-4", SecuritySeverity.LOW, "org.missing:lib-4", "9.9.9"),
+            finding("SNYK-JAVA-MISSING-5", SecuritySeverity.LOW, "org.missing:lib-5", "9.9.9"),
+            finding("SNYK-JAVA-MISSING-6", SecuritySeverity.LOW, "org.missing:lib-6", "9.9.9")
+        );
 
-        GraphDocument enriched = new SecurityGraphEnricher().enrich(document, SecurityCheckResult.checked(List.of(finding), List.of()));
+        GraphDocument enriched = new SecurityGraphEnricher().enrich(document, SecurityCheckResult.checked(findings, List.of()));
 
-        assertThat(enriched.securitySummary().unmappedFindings()).isEqualTo(1);
+        assertThat(enriched.securitySummary().unmappedFindings()).isEqualTo(6);
         assertThat(enriched.diagnostics()).anySatisfy(diagnostic -> {
             assertThat(diagnostic.type()).isEqualTo("snyk-unmapped-findings");
             assertThat(diagnostic.message()).contains("SNYK-JAVA-MISSING-1");
+            assertThat(diagnostic.message()).contains("SNYK-JAVA-MISSING-6");
         });
     }
 

@@ -144,7 +144,6 @@ public final class SecurityGraphEnricher {
     private static String unmappedMessage(List<SecurityFinding> unmapped) {
         return "Snyk findings were not mapped to graph nodes: " + unmapped.stream()
             .map(SecurityFinding::id)
-            .limit(5)
             .collect(Collectors.joining(", "));
     }
 }
