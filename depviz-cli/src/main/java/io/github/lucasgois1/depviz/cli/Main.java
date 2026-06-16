@@ -1,5 +1,6 @@
 package io.github.lucasgois1.depviz.cli;
 
+import java.io.PrintStream;
 import java.nio.file.Path;
 import java.util.List;
 
@@ -8,9 +9,25 @@ public final class Main {
 
     private Main() {}
 
-    public static void main(String[] args) throws Exception {
-        int exitCode = run(args, Path.of("").toAbsolutePath().normalize(), System.console() != null);
+    public static void main(String[] args) {
+        int exitCode = runMain(args, Path.of("").toAbsolutePath().normalize(), System.console() != null, System.err);
         System.exit(exitCode);
+    }
+
+    static int runMain(String[] args, Path currentDirectory, boolean interactive, PrintStream err) {
+        try {
+            return run(args, currentDirectory, interactive);
+        } catch (IllegalArgumentException exception) {
+            err.println(exception.getMessage());
+            return 2;
+        } catch (Exception exception) {
+            String message = exception.getMessage();
+            if (message == null || message.isBlank()) {
+                message = exception.getClass().getSimpleName();
+            }
+            err.println("Unexpected error: " + message);
+            return 1;
+        }
     }
 
     static int run(String[] args, Path currentDirectory, boolean interactive) throws Exception {
@@ -37,7 +54,7 @@ public final class Main {
             throw new IllegalArgumentException(
                 "No Maven or Gradle project found in "
                     + options.projectDir()
-                    + ". Run depviz from a directory containing pom.xml, build.gradle, or settings.gradle."
+                    + ". Run depviz from a directory containing pom.xml, build.gradle, build.gradle.kts, settings.gradle, or settings.gradle.kts."
             );
         }
         if (detection.tools().size() == 1) {
