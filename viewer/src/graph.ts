@@ -81,13 +81,13 @@ export function nodeSearchText(node: GraphNode): string {
 export function layoutDisplayName(layout: LayoutName): string {
   switch (layout) {
     case "breadthfirst":
-      return "Breadthfirst";
+      return "Flow";
     case "force":
       return "Map";
     case "circle":
-      return "Circle";
+      return "Groups";
     case "concentric":
-      return "Concentric";
+      return "Hubs";
   }
 }
 

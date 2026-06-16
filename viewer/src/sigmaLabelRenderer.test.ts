@@ -39,12 +39,12 @@ describe("badgeTextForVersionInsight", () => {
 
 describe("badgeColorForUpdate", () => {
   it.each([
-    ["patch", { background: "#ccfbf1", border: "#5eead4", text: "#0f766e" }],
-    ["minor", { background: "#dbeafe", border: "#93c5fd", text: "#1d4ed8" }],
-    ["major", { background: "#fee2e2", border: "#fca5a5", text: "#b91c1c" }],
-    ["unknown", { background: "#e5e7eb", border: "#cbd5e1", text: "#475569" }],
-    ["unavailable", { background: "#fef3c7", border: "#fcd34d", text: "#b45309" }]
-  ] as const)("maps %s badges to restrained colors", (updateType, expected) => {
+    ["patch", { background: "#0f3d3a", border: "#2dd4bf", text: "#99f6e4" }],
+    ["minor", { background: "#12345c", border: "#58a6ff", text: "#bfdbfe" }],
+    ["major", { background: "#4a1620", border: "#fb7185", text: "#fecdd3" }],
+    ["unknown", { background: "#1f2937", border: "#475569", text: "#cbd5e1" }],
+    ["unavailable", { background: "#422006", border: "#fbbf24", text: "#fde68a" }]
+  ] as const)("maps %s badges to dark theme colors", (updateType, expected) => {
     expect(badgeColorForUpdate(updateType)).toEqual(expected);
   });
 });
@@ -69,7 +69,7 @@ describe("versionBadgeForNode", () => {
   it("combines serialized badge text and color metadata for the renderer", () => {
     expect(versionBadgeForNode({ updateType: "major", updateBadge: "M" } as SigmaNodeAttributes)).toEqual({
       text: "M",
-      color: { background: "#fee2e2", border: "#fca5a5", text: "#b91c1c" }
+      color: { background: "#4a1620", border: "#fb7185", text: "#fecdd3" }
     });
   });
 
@@ -80,7 +80,7 @@ describe("versionBadgeForNode", () => {
   it("uses unavailable badge colors from status even when update type is unknown", () => {
     expect(versionBadgeForNode({ versionStatus: "unavailable", updateType: "unknown", updateBadge: "!" } as SigmaNodeAttributes)).toEqual({
       text: "!",
-      color: { background: "#fef3c7", border: "#fcd34d", text: "#b45309" }
+      color: { background: "#422006", border: "#fbbf24", text: "#fde68a" }
     });
   });
 });
@@ -99,19 +99,19 @@ describe("badgesForNode", () => {
       {
         text: "H",
         kind: "security",
-        color: { background: "#fee2e2", border: "#fca5a5", text: "#b91c1c" }
+        color: { background: "#4a1620", border: "#fb7185", text: "#fecdd3" }
       },
       {
         text: "P",
         kind: "version",
-        color: { background: "#ccfbf1", border: "#5eead4", text: "#0f766e" }
+        color: { background: "#0f3d3a", border: "#2dd4bf", text: "#99f6e4" }
       }
     ]);
   });
 });
 
 describe("drawDependencyNodeLabel", () => {
-  it("draws unbadged labels at base Sigma coordinates without a stroke outline", () => {
+  it("draws unbadged labels with a dark halo at adaptive Sigma coordinates", () => {
     const context = canvasContext();
 
     drawDependencyNodeLabel(
@@ -121,7 +121,21 @@ describe("drawDependencyNodeLabel", () => {
     );
 
     expect(context.fillText).toHaveBeenCalledWith("client", 110, 54);
-    expect(context.strokeText).not.toHaveBeenCalled();
+    expect(context.strokeText).toHaveBeenCalledWith("client", 110, 54);
+    expect(context.strokeStyle).toBe("rgba(6, 12, 20, 0.82)");
+  });
+
+  it("draws labels on the left when nodes are near the right canvas edge", () => {
+    const context = canvasContext();
+
+    drawDependencyNodeLabel(
+      context,
+      { label: "client", x: 720, y: 50, size: 7 } as SigmaNodeAttributes,
+      labelSettings()
+    );
+
+    expect(context.strokeText).toHaveBeenCalledWith("client", 674, 54);
+    expect(context.fillText).toHaveBeenCalledWith("client", 674, 54);
   });
 
   it("draws a badge pill and badge text for badged labels", () => {
@@ -189,7 +203,7 @@ function labelSettings() {
     labelSize: 12,
     labelFont: "Inter",
     labelWeight: "650",
-    labelColor: { color: "#0f172a" }
+    labelColor: { color: "#dbeafe" }
   } as Parameters<typeof drawDependencyNodeLabel>[2];
 }
 

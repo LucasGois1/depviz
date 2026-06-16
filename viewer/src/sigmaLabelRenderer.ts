@@ -1,4 +1,4 @@
-import type { NodeLabelDrawingFunction } from "sigma/rendering";
+import type { NodeHoverDrawingFunction, NodeLabelDrawingFunction } from "sigma/rendering";
 import type { SigmaEdgeAttributes, SigmaNodeAttributes, SigmaVersionUpdateType } from "./sigmaGraph";
 import type { SecurityInsight, SecuritySeverity, VersionInsight } from "./types";
 
@@ -32,21 +32,26 @@ export const drawDependencyNodeLabel: NodeLabelDrawingFunction<SigmaNodeAttribut
   const font = settings.labelFont;
   const weight = settings.labelWeight;
   const color = settings.labelColor.attribute
-    ? String((data as Record<string, unknown>)[settings.labelColor.attribute] ?? settings.labelColor.color ?? "#0f172a")
+    ? String((data as Record<string, unknown>)[settings.labelColor.attribute] ?? settings.labelColor.color ?? "#dbeafe")
     : settings.labelColor.color;
   const label = String(data.label);
 
   context.font = `${weight} ${size}px ${font}`;
-  context.fillStyle = color ?? "#0f172a";
 
-  const x = data.x + data.size + 3;
+  const textWidth = context.measureText(label).width;
+  const side = labelSideForCanvasPosition(data.x, context.canvas.width);
+  const x = side === "left" ? data.x - data.size - 3 - textWidth : data.x + data.size + 3;
   const y = data.y + size / 3;
   const badges = badgesForNode(data as Partial<SigmaNodeAttributes>);
 
+  context.lineJoin = "round";
+  context.lineWidth = 4;
+  context.strokeStyle = "rgba(6, 12, 20, 0.82)";
+  context.strokeText(label, x, y);
+  context.fillStyle = color ?? "#dbeafe";
   context.fillText(label, x, y);
 
   if (badges.length > 0) {
-    const textWidth = context.measureText(label).width;
     let xOffset = 6;
     for (const badge of badges) {
       xOffset = drawBadge(context, {
@@ -61,6 +66,21 @@ export const drawDependencyNodeLabel: NodeLabelDrawingFunction<SigmaNodeAttribut
       });
     }
   }
+};
+
+export const drawDependencyNodeHover: NodeHoverDrawingFunction<SigmaNodeAttributes, SigmaEdgeAttributes> = (context, data, settings) => {
+  const radius = Math.max(data.size + 3, settings.labelSize * 0.72);
+
+  context.beginPath();
+  context.arc(data.x, data.y, radius, 0, Math.PI * 2);
+  context.closePath();
+  context.fillStyle = "rgba(88, 166, 255, 0.18)";
+  context.fill();
+  context.strokeStyle = "rgba(219, 234, 254, 0.72)";
+  context.lineWidth = 2;
+  context.stroke();
+
+  drawDependencyNodeLabel(context, data as SigmaNodeAttributes, settings);
 };
 
 export function badgeTextForVersionInsight(insight: VersionInsight | null | undefined): string | null {
@@ -90,18 +110,18 @@ export function badgeTextForVersionInsight(insight: VersionInsight | null | unde
 
 export function badgeColorForUpdate(updateType: VersionBadgeTone): BadgeColor {
   if (updateType === "patch") {
-    return { background: "#ccfbf1", border: "#5eead4", text: "#0f766e" };
+    return { background: "#0f3d3a", border: "#2dd4bf", text: "#99f6e4" };
   }
   if (updateType === "minor") {
-    return { background: "#dbeafe", border: "#93c5fd", text: "#1d4ed8" };
+    return { background: "#12345c", border: "#58a6ff", text: "#bfdbfe" };
   }
   if (updateType === "major") {
-    return { background: "#fee2e2", border: "#fca5a5", text: "#b91c1c" };
+    return { background: "#4a1620", border: "#fb7185", text: "#fecdd3" };
   }
   if (updateType === "unavailable") {
-    return { background: "#fef3c7", border: "#fcd34d", text: "#b45309" };
+    return { background: "#422006", border: "#fbbf24", text: "#fde68a" };
   }
-  return { background: "#e5e7eb", border: "#cbd5e1", text: "#475569" };
+  return { background: "#1f2937", border: "#475569", text: "#cbd5e1" };
 }
 
 export function securityBadgeText(insight: Pick<SecurityInsight, "maxSeverity" | "status"> | null | undefined): string | null {
@@ -155,15 +175,15 @@ function securityBadgeForNode(node: Pick<Partial<SigmaNodeAttributes>, "security
 
 function badgeColorForSeverity(severity: SecuritySeverity): BadgeColor {
   if (severity === "critical") {
-    return { background: "#fecaca", border: "#f87171", text: "#7f1d1d" };
+    return { background: "#5f1220", border: "#f43f5e", text: "#ffe4e6" };
   }
   if (severity === "high") {
-    return { background: "#fee2e2", border: "#fca5a5", text: "#b91c1c" };
+    return { background: "#4a1620", border: "#fb7185", text: "#fecdd3" };
   }
   if (severity === "medium") {
-    return { background: "#fef3c7", border: "#fcd34d", text: "#b45309" };
+    return { background: "#422006", border: "#fbbf24", text: "#fde68a" };
   }
-  return { background: "#dbeafe", border: "#93c5fd", text: "#1d4ed8" };
+  return { background: "#0f2f4a", border: "#38bdf8", text: "#bae6fd" };
 }
 
 function drawBadge(

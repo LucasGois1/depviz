@@ -65,8 +65,8 @@ export default function App() {
   }, []);
 
   const updateScope = useCallback((scope: string, enabled: boolean) => {
-    setFilters((current) => setScopeEnabled(current, scope, enabled));
-  }, []);
+    setFilters((current) => setScopeEnabled(current, scope, enabled, scopes));
+  }, [scopes]);
 
   const updateOptionalMode = useCallback((optionalMode: OptionalMode) => {
     setFilters((current) => setOptionalMode(current, optionalMode));
@@ -99,7 +99,6 @@ export default function App() {
           layout={layout}
           scopes={scopes}
           showLabels={showLabels}
-          visibleCount={visibility.visibleNodeIds.size}
           onSearchChange={updateSearch}
           onScopeChange={updateScope}
           onOptionalModeChange={updateOptionalMode}

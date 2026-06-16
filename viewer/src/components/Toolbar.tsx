@@ -1,4 +1,5 @@
-import { Circle, Crosshair, Eye, EyeOff, FilterX, GitBranch, Maximize2, Network, RotateCcw, Search } from "lucide-react";
+import { Eye, EyeOff, FilterX, Maximize2, Network, RotateCcw, Search } from "lucide-react";
+import { scopeIsEnabled } from "../filtering";
 import { layoutDisplayName } from "../graph";
 import type { DepvizDocument, FilterState, LayoutName, OptionalMode, SecurityFilterMode, UpdateFilterMode, VersionSummary } from "../types";
 import { Button } from "./ui/button";
@@ -11,7 +12,6 @@ interface ToolbarProps {
   layout: LayoutName;
   scopes: string[];
   showLabels: boolean;
-  visibleCount: number;
   onSearchChange: (search: string) => void;
   onScopeChange: (scope: string, enabled: boolean) => void;
   onOptionalModeChange: (mode: OptionalMode) => void;
@@ -32,7 +32,6 @@ export function Toolbar({
   layout,
   scopes,
   showLabels,
-  visibleCount,
   onSearchChange,
   onScopeChange,
   onOptionalModeChange,
@@ -46,19 +45,19 @@ export function Toolbar({
 }: ToolbarProps) {
   return (
     <header className="toolbar">
-      <div className="title-cluster">
-        <div className="app-mark">
-          <Network aria-hidden="true" />
+      <div className="toolbar-primary">
+        <div className="title-cluster">
+          <div className="app-mark">
+            <Network aria-hidden="true" />
+          </div>
+          <div>
+            <h1>{document.project.artifactId}</h1>
+            <p>
+              {document.project.groupId}:{document.project.version}
+            </p>
+          </div>
         </div>
-        <div>
-          <h1>{document.project.artifactId}</h1>
-          <p>
-            {document.project.groupId}:{document.project.version}
-          </p>
-        </div>
-      </div>
 
-      <div className="toolbar-controls">
         <label className="search-box">
           <Search aria-hidden="true" />
           <Input
@@ -69,75 +68,106 @@ export function Toolbar({
           />
         </label>
 
-        <div className="control-group" aria-label="Scope filters">
-          {scopes.map((scope) => (
-            <label className="check-chip" key={scope}>
-              <input
-                type="checkbox"
-                checked={filters.scopes.has(scope)}
-                onChange={(event) => onScopeChange(scope, event.target.checked)}
-              />
-              <span>{scope}</span>
-            </label>
-          ))}
+        <div className="canvas-actions" aria-label="Canvas actions">
+          <Button variant="outline" size="icon" onClick={onFit} title="Fit graph" aria-label="Fit graph">
+            <Maximize2 aria-hidden="true" />
+          </Button>
+          <Button variant="outline" size="icon" onClick={onReset} title="Reset layout" aria-label="Reset layout">
+            <RotateCcw aria-hidden="true" />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={onClearFilters} title="Clear filters" aria-label="Clear filters">
+            <FilterX aria-hidden="true" />
+          </Button>
         </div>
+      </div>
 
-        <Select value={filters.optionalMode} onValueChange={(value) => onOptionalModeChange(value as OptionalMode)} label="Optional dependency filter">
-          <SelectItem value="all">All deps</SelectItem>
-          <SelectItem value="required">Required only</SelectItem>
-          <SelectItem value="optional">Optional only</SelectItem>
-        </Select>
+      <div className="toolbar-secondary">
+        <section className="command-group command-group-scopes">
+          <span className="command-label">Scopes</span>
+          <div className="control-group" aria-label="Scope filters">
+            {scopes.map((scope) => (
+              <label className="check-chip" key={scope}>
+                <input
+                  type="checkbox"
+                  checked={scopeIsEnabled(filters, scope)}
+                  onChange={(event) => onScopeChange(scope, event.target.checked)}
+                />
+                <span>{scope}</span>
+              </label>
+            ))}
+          </div>
+        </section>
+
+        <section className="command-group">
+          <div className="control-field">
+            <span>Deps</span>
+            <Select value={filters.optionalMode} onValueChange={(value) => onOptionalModeChange(value as OptionalMode)} label="Optional dependency filter">
+              <SelectItem value="all">All deps</SelectItem>
+              <SelectItem value="required">Required only</SelectItem>
+              <SelectItem value="optional">Optional only</SelectItem>
+            </Select>
+          </div>
+        </section>
 
         {document.versionSummary?.enabled ? (
-          <Select value={filters.updateMode} onValueChange={(value) => onUpdateModeChange(value as UpdateFilterMode)} label="Update filter">
-            <SelectItem value="all">All dependencies</SelectItem>
-            <SelectItem value="outdated">{updateLabel("Outdated", document.versionSummary, "outdated")}</SelectItem>
-            <SelectItem value="major">{updateLabel("Major", document.versionSummary, "major")}</SelectItem>
-            <SelectItem value="minor">{updateLabel("Minor", document.versionSummary, "minor")}</SelectItem>
-            <SelectItem value="patch">{updateLabel("Patch", document.versionSummary, "patch")}</SelectItem>
-            <SelectItem value="unknown">{updateLabel("Unknown", document.versionSummary, "unknown")}</SelectItem>
-            <SelectItem value="unavailable">{updateLabel("Unavailable", document.versionSummary, "unavailable")}</SelectItem>
-          </Select>
+          <section className="command-group">
+            <div className="control-field">
+              <span>Updates</span>
+              <Select value={filters.updateMode} onValueChange={(value) => onUpdateModeChange(value as UpdateFilterMode)} label="Update filter">
+                <SelectItem value="all">All dependencies</SelectItem>
+                <SelectItem value="outdated">{updateLabel("Outdated", document.versionSummary, "outdated")}</SelectItem>
+                <SelectItem value="major">{updateLabel("Major", document.versionSummary, "major")}</SelectItem>
+                <SelectItem value="minor">{updateLabel("Minor", document.versionSummary, "minor")}</SelectItem>
+                <SelectItem value="patch">{updateLabel("Patch", document.versionSummary, "patch")}</SelectItem>
+                <SelectItem value="unknown">{updateLabel("Unknown", document.versionSummary, "unknown")}</SelectItem>
+                <SelectItem value="unavailable">{updateLabel("Unavailable", document.versionSummary, "unavailable")}</SelectItem>
+              </Select>
+            </div>
+          </section>
         ) : null}
 
         {document.securitySummary?.checked ? (
-          <Select value={filters.securityMode} onValueChange={(value) => onSecurityModeChange(value as SecurityFilterMode)} label="Security filter">
-            <SelectItem value="all">All security</SelectItem>
-            <SelectItem value="vulnerable">Vulnerable</SelectItem>
-            <SelectItem value="critical">Critical</SelectItem>
-            <SelectItem value="high">High</SelectItem>
-            <SelectItem value="medium">Medium</SelectItem>
-            <SelectItem value="low">Low</SelectItem>
-          </Select>
+          <section className="command-group">
+            <div className="control-field">
+              <span>Risk</span>
+              <Select value={filters.securityMode} onValueChange={(value) => onSecurityModeChange(value as SecurityFilterMode)} label="Security filter">
+                <SelectItem value="all">All security</SelectItem>
+                <SelectItem value="vulnerable">Vulnerable</SelectItem>
+                <SelectItem value="critical">Critical</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="low">Low</SelectItem>
+              </Select>
+            </div>
+          </section>
         ) : null}
 
-        <Select value={layout} onValueChange={(value) => onLayoutChange(value as LayoutName)} label="Graph layout">
-          {layouts.map((option) => (
-            <SelectItem key={option} value={option}>
-              {layoutDisplayName(option)}
-            </SelectItem>
-          ))}
-        </Select>
+        <section className="command-group">
+          <div className="control-field">
+            <span>View</span>
+            <Select value={layout} onValueChange={(value) => onLayoutChange(value as LayoutName)} label="Graph layout">
+              {layouts.map((option) => (
+                <SelectItem key={option} value={option}>
+                  {layoutDisplayName(option)}
+                </SelectItem>
+              ))}
+            </Select>
+          </div>
+        </section>
 
-        <Button variant="outline" size="sm" onClick={() => onShowLabelsChange(!showLabels)} title="Toggle all labels">
-          {showLabels ? <Eye aria-hidden="true" data-icon="inline-start" /> : <EyeOff aria-hidden="true" data-icon="inline-start" />}
-          All labels
-        </Button>
-        <Button variant="outline" size="icon" onClick={onFit} title="Fit graph" aria-label="Fit graph">
-          <Maximize2 aria-hidden="true" />
-        </Button>
-        <Button variant="outline" size="icon" onClick={onReset} title="Reset layout" aria-label="Reset layout">
-          <RotateCcw aria-hidden="true" />
-        </Button>
-        <Button variant="ghost" size="icon" onClick={onClearFilters} title="Clear filters" aria-label="Clear filters">
-          <FilterX aria-hidden="true" />
-        </Button>
-      </div>
-
-      <div className="toolbar-metrics" aria-label="Graph summary">
-        <Metric icon={<Circle aria-hidden="true" />} label="Nodes" value={`${visibleCount}/${document.summary.nodeCount}`} />
-        <Metric icon={<GitBranch aria-hidden="true" />} label="Edges" value={`${document.summary.edgeCount}`} />
-        <Metric icon={<Crosshair aria-hidden="true" />} label="Layout" value={layoutDisplayName(layout)} />
+        <section className="command-group">
+          <span className="command-label">Labels</span>
+          <div className="label-mode" aria-label="Label density">
+            <button type="button" aria-pressed={!showLabels} onClick={() => onShowLabelsChange(false)} title="Show key labels only">
+              <EyeOff aria-hidden="true" />
+              Key
+            </button>
+            <button type="button" aria-pressed={showLabels} onClick={() => onShowLabelsChange(true)} title="Show all labels">
+              <Eye aria-hidden="true" />
+              All
+            </button>
+          </div>
+        </section>
       </div>
     </header>
   );
@@ -145,14 +175,4 @@ export function Toolbar({
 
 function updateLabel(label: string, summary: VersionSummary, key: keyof Pick<VersionSummary, "outdated" | "major" | "minor" | "patch" | "unknown" | "unavailable">) {
   return `${label} (${summary[key]})`;
-}
-
-function Metric({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
-  return (
-    <div className="metric">
-      {icon}
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
 }
