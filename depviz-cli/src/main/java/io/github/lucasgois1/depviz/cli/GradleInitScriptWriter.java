@@ -1,0 +1,77 @@
+package io.github.lucasgois1.depviz.cli;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+public final class GradleInitScriptWriter {
+    private final String version;
+
+    public GradleInitScriptWriter(String version) {
+        this.version = version;
+    }
+
+    public Path write(Path directory, CliOptions options) throws IOException {
+        Path script = Files.createTempFile(directory, "depviz-", ".gradle");
+        Files.writeString(script, scriptText(options));
+        return script;
+    }
+
+    private String scriptText(CliOptions options) {
+        StringBuilder script = new StringBuilder();
+        script.append("""
+            initscript {
+              repositories { mavenLocal(); gradlePluginPortal(); mavenCentral() }
+              dependencies { classpath 'io.github.lucasgois1.depviz:depviz-gradle-plugin:%s' }
+            }
+            allprojects { project ->
+              if (project == project.rootProject) {
+                project.apply plugin: 'io.github.lucasgois1.depviz'
+                project.extensions.configure('depviz') { depviz ->
+            """.formatted(escape(version)));
+        addString(script, "scope", options.scope());
+        if (options.open() != null) {
+            script.append("      depviz.open.set(").append(options.open()).append(")\n");
+        }
+        addDirectory(script, "outputDirectory", options.output());
+        addString(script, "layout", options.layout());
+        addString(script, "snyk", options.snyk());
+        addFile(script, "snykJson", options.snykJson());
+        script.append("""
+                }
+              }
+            }
+            """);
+        return script.toString();
+    }
+
+    private static void addString(StringBuilder script, String property, String value) {
+        if (value != null && !value.isBlank()) {
+            script.append("      depviz.").append(property).append(".set('").append(escape(value)).append("')\n");
+        }
+    }
+
+    private static void addDirectory(StringBuilder script, String property, String value) {
+        if (value != null && !value.isBlank()) {
+            script.append("      depviz.")
+                .append(property)
+                .append(".set(project.layout.projectDirectory.dir('")
+                .append(escape(value))
+                .append("'))\n");
+        }
+    }
+
+    private static void addFile(StringBuilder script, String property, String value) {
+        if (value != null && !value.isBlank()) {
+            script.append("      depviz.")
+                .append(property)
+                .append(".set(project.layout.projectDirectory.file('")
+                .append(escape(value))
+                .append("'))\n");
+        }
+    }
+
+    private static String escape(String value) {
+        return value.replace("\\", "\\\\").replace("'", "\\'");
+    }
+}
