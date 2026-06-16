@@ -6,11 +6,13 @@ BASE_URL="${DEPVIZ_BASE_URL:-https://github.com/lucasgois1/depviz/releases/downl
 INSTALL_DIR="${DEPVIZ_HOME:-$HOME/.depviz}"
 BIN_DIR="$INSTALL_DIR/bin"
 LIB_DIR="$INSTALL_DIR/lib"
+M2_REPO="${MAVEN_LOCAL_REPOSITORY:-$HOME/.m2/repository}"
 
-mkdir -p "$BIN_DIR" "$LIB_DIR"
+mkdir -p "$BIN_DIR" "$LIB_DIR" "$M2_REPO"
 
 TMP_JAR="$LIB_DIR/depviz-cli.jar.tmp.$$"
-trap 'rm -f "$TMP_JAR"' EXIT HUP INT TERM
+TMP_MAVEN_REPO="$LIB_DIR/depviz-maven-repository.tar.gz.tmp.$$"
+trap 'rm -f "$TMP_JAR" "$TMP_MAVEN_REPO"' EXIT HUP INT TERM
 
 if [ -n "${DEPVIZ_LOCAL_JAR:-}" ]; then
   cp "$DEPVIZ_LOCAL_JAR" "$TMP_JAR"
@@ -18,6 +20,14 @@ else
   curl -fsSL "$BASE_URL/depviz-cli.jar" -o "$TMP_JAR"
 fi
 mv "$TMP_JAR" "$LIB_DIR/depviz-cli.jar"
+
+if [ -n "${DEPVIZ_LOCAL_MAVEN_REPOSITORY:-}" ]; then
+  tar -C "$M2_REPO" -xzf "$DEPVIZ_LOCAL_MAVEN_REPOSITORY"
+elif curl -fsSL "$BASE_URL/depviz-maven-repository.tar.gz" -o "$TMP_MAVEN_REPO"; then
+  tar -C "$M2_REPO" -xzf "$TMP_MAVEN_REPO"
+else
+  echo "Depviz Maven repository asset was not found for $VERSION; Maven/Gradle may need to resolve Depviz plugins from configured repositories." >&2
+fi
 
 cat > "$BIN_DIR/depviz" <<'LAUNCHER'
 #!/bin/sh

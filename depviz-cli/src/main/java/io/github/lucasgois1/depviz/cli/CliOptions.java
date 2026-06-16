@@ -8,6 +8,8 @@ public record CliOptions(
     Path projectDir,
     BuildTool tool,
     String scope,
+    Boolean checkUpdates,
+    boolean refreshDependencies,
     Boolean open,
     String output,
     String layout,
@@ -21,7 +23,21 @@ public record CliOptions(
         if (open != null) {
             return this;
         }
-        return new CliOptions(projectDir, tool, scope, interactive, output, layout, snyk, snykJson, snykOrg, snykAllProjects, snykCommand);
+        return new CliOptions(
+            projectDir,
+            tool,
+            scope,
+            checkUpdates,
+            refreshDependencies,
+            interactive,
+            output,
+            layout,
+            snyk,
+            snykJson,
+            snykOrg,
+            snykAllProjects,
+            snykCommand
+        );
     }
 
     public static CliOptions parse(String[] args, Path currentDirectory) {
@@ -31,6 +47,8 @@ public record CliOptions(
         Path projectDir = currentDirectory;
         BuildTool tool = null;
         String scope = "runtime";
+        Boolean checkUpdates = null;
+        boolean refreshDependencies = false;
         Boolean open = null;
         String output = null;
         String layout = null;
@@ -46,6 +64,9 @@ public record CliOptions(
                 case "--project-dir" -> projectDir = resolveProjectDir(currentDirectory, requireValue(list, ++index, arg));
                 case "--tool" -> tool = parseTool(requireValue(list, ++index, arg));
                 case "--scope" -> scope = requireValue(list, ++index, arg);
+                case "--updates" -> checkUpdates = true;
+                case "--no-updates" -> checkUpdates = false;
+                case "--refresh-dependencies" -> refreshDependencies = true;
                 case "--open" -> open = true;
                 case "--no-browser" -> open = false;
                 case "--output" -> output = requireValue(list, ++index, arg);
@@ -59,7 +80,21 @@ public record CliOptions(
                 default -> throw new IllegalArgumentException("Unknown option: " + arg);
             }
         }
-        return new CliOptions(projectDir, tool, scope, open, output, layout, snyk, snykJson, snykOrg, snykAllProjects, snykCommand);
+        return new CliOptions(
+            projectDir,
+            tool,
+            scope,
+            checkUpdates,
+            refreshDependencies,
+            open,
+            output,
+            layout,
+            snyk,
+            snykJson,
+            snykOrg,
+            snykAllProjects,
+            snykCommand
+        );
     }
 
     private static String requireValue(List<String> args, int index, String option) {

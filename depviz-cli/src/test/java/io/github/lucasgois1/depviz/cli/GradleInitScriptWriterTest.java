@@ -13,7 +13,21 @@ class GradleInitScriptWriterTest {
 
     @Test
     void writesInitScriptApplyingMatchingPluginVersionAndFlags() throws Exception {
-        CliOptions options = new CliOptions(tempDir, BuildTool.GRADLE, "runtime", false, "custom", "force", "true", "snyk.json", "org", true, "/opt/bin/snyk");
+        CliOptions options = new CliOptions(
+            tempDir,
+            BuildTool.GRADLE,
+            "runtime",
+            false,
+            true,
+            false,
+            "custom",
+            "force",
+            "true",
+            "snyk.json",
+            "org",
+            true,
+            "/opt/bin/snyk"
+        );
 
         Path script = new GradleInitScriptWriter("0.1.0-SNAPSHOT").write(tempDir, options);
 
@@ -37,6 +51,8 @@ class GradleInitScriptWriterTest {
             tempDir,
             BuildTool.GRADLE,
             "run'time",
+            null,
+            false,
             null,
             "custom\\dir",
             "for'ce",

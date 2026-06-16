@@ -29,6 +29,8 @@ class CliOptionsTest {
                 "--project-dir", "/repo/app",
                 "--tool", "gradle",
                 "--scope", "all",
+                "--no-updates",
+                "--refresh-dependencies",
                 "--snyk",
                 "--snyk-json", "snyk.json",
                 "--snyk-org", "acme",
@@ -40,11 +42,19 @@ class CliOptionsTest {
         assertThat(parsed.projectDir()).isEqualTo(Path.of("/repo/app"));
         assertThat(parsed.tool()).isEqualTo(BuildTool.GRADLE);
         assertThat(parsed.scope()).isEqualTo("all");
+        assertThat(parsed.checkUpdates()).isFalse();
+        assertThat(parsed.refreshDependencies()).isTrue();
         assertThat(parsed.snyk()).isEqualTo("true");
         assertThat(parsed.snykJson()).isEqualTo("snyk.json");
         assertThat(parsed.snykOrg()).isEqualTo("acme");
         assertThat(parsed.snykAllProjects()).isTrue();
         assertThat(parsed.snykCommand()).isEqualTo("/opt/bin/snyk");
+    }
+
+    @Test
+    void parsesExplicitUpdatesFlag() {
+        CliOptions parsed = CliOptions.parse(new String[] {"open", "--updates"}, Path.of("/tmp/project"));
+        assertThat(parsed.checkUpdates()).isTrue();
     }
 
     @Test

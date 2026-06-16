@@ -71,9 +71,9 @@ jobs:
           TAG: ${{ steps.version.outputs.tag }}
         run: |
           if gh release view "${TAG}" >/dev/null 2>&1; then
-            gh release upload "${TAG}" dist/depviz-cli.jar dist/install.sh dist/checksums.txt --clobber
+            gh release upload "${TAG}" dist/depviz-cli.jar dist/depviz-maven-repository.tar.gz dist/install.sh dist/checksums.txt --clobber
           else
-            gh release create "${TAG}" dist/depviz-cli.jar dist/install.sh dist/checksums.txt \
+            gh release create "${TAG}" dist/depviz-cli.jar dist/depviz-maven-repository.tar.gz dist/install.sh dist/checksums.txt \
               --target "${GITHUB_SHA}" \
               --title "Depviz ${TAG}" \
               --generate-notes

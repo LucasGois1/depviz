@@ -29,6 +29,14 @@ depviz open
 
 The CLI does not modify `pom.xml`, `build.gradle`, or `settings.gradle`. It delegates to Maven or Gradle with the matching Depviz plugin version.
 
+For large projects or corporate Maven mirrors, start with a faster generation pass:
+
+```bash
+depviz open --no-browser --no-snyk --no-updates
+```
+
+Use `depviz open --help` to see all CLI options and troubleshooting notes.
+
 ## Build Locally
 
 From this repository:

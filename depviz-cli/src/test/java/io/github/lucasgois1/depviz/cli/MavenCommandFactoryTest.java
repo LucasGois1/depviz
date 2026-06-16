@@ -23,6 +23,8 @@ class MavenCommandFactoryTest {
             BuildTool.MAVEN,
             "compile",
             false,
+            true,
+            false,
             "target/custom",
             "force",
             "true",
@@ -34,11 +36,13 @@ class MavenCommandFactoryTest {
 
         assertThat(new MavenCommandFactory("0.1.0-SNAPSHOT").command(options, "mvn")).containsExactly(
             "mvn",
+            "-U",
             "io.github.lucasgois1.depviz:depviz-maven-plugin:0.1.0-SNAPSHOT:open",
             "-Ddepviz.scope=compile",
             "-Ddepviz.open=false",
             "-Ddepviz.outputDirectory=target/custom",
             "-Ddepviz.layout=force",
+            "-Ddepviz.checkUpdates=false",
             "-Ddepviz.snyk=true",
             "-Ddepviz.snykJson=snyk.json",
             "-Ddepviz.snykOrg=my-org",

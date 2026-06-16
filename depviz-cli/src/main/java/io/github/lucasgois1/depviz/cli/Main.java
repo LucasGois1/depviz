@@ -20,6 +20,14 @@ public final class Main {
 
     static int runMain(String[] args, Path currentDirectory, boolean interactive, PrintStream out, PrintStream err) {
         try {
+            if (isOpenHelpRequest(args)) {
+                out.print(HelpText.open());
+                return 0;
+            }
+            if (isRootHelpRequest(args)) {
+                out.print(HelpText.root());
+                return 0;
+            }
             if (isVersionRequest(args)) {
                 out.println("depviz " + resolveVersion());
                 return 0;
@@ -39,7 +47,19 @@ public final class Main {
     }
 
     private static boolean isVersionRequest(String[] args) {
-        return args.length == 1 && ("--version".equals(args[0]) || "-v".equals(args[0]));
+        return args.length == 1 && ("--version".equals(args[0]) || "-v".equals(args[0]) || "version".equals(args[0]));
+    }
+
+    private static boolean isRootHelpRequest(String[] args) {
+        return args.length == 0
+            || (args.length == 1 && ("--help".equals(args[0]) || "-h".equals(args[0]) || "help".equals(args[0])))
+            || (args.length == 2 && "help".equals(args[0]) && !"open".equals(args[1]));
+    }
+
+    private static boolean isOpenHelpRequest(String[] args) {
+        return args.length == 2
+            && (("open".equals(args[0]) && ("--help".equals(args[1]) || "-h".equals(args[1])))
+                || ("help".equals(args[0]) && "open".equals(args[1])));
     }
 
     static int run(String[] args, Path currentDirectory, boolean interactive) throws Exception {
@@ -52,7 +72,10 @@ public final class Main {
             return runner.run(options.projectDir(), command);
         }
         Path initScript = new GradleInitScriptWriter(VERSION).write(options.projectDir(), options);
-        return runner.run(options.projectDir(), new GradleCommandFactory().command(ExecutableSelector.gradle(options.projectDir()), initScript));
+        return runner.run(
+            options.projectDir(),
+            new GradleCommandFactory().command(ExecutableSelector.gradle(options.projectDir()), initScript, options.refreshDependencies())
+        );
     }
 
     static String resolveVersion() {

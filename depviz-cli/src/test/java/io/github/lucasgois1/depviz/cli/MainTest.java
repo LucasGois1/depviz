@@ -38,7 +38,7 @@ class MainTest {
 
     @Test
     void delegatesInteractiveAmbiguousSelectionToPrompter() {
-        CliOptions options = new CliOptions(dir, null, "runtime", true, null, null, null, null, null, false, null);
+        CliOptions options = new CliOptions(dir, null, "runtime", null, false, true, null, null, null, null, null, false, null);
         ProjectDetector.DetectionResult detection =
             new ProjectDetector.DetectionResult(List.of(BuildTool.MAVEN, BuildTool.GRADLE));
         ConsolePrompter prompter = new ConsolePrompter(new ByteArrayInputStream("2\n".getBytes()), new PrintStream(new ByteArrayOutputStream()));
@@ -68,6 +68,50 @@ class MainTest {
             .contains("No Maven or Gradle project found")
             .doesNotContain("Exception")
             .doesNotContain("\tat ");
+    }
+
+    @Test
+    void printsRootHelpWithoutInspectingProject() {
+        ByteArrayOutputStream stdout = new ByteArrayOutputStream();
+        ByteArrayOutputStream stderr = new ByteArrayOutputStream();
+
+        int exitCode = Main.runMain(
+            new String[] {"--help"},
+            dir,
+            false,
+            new PrintStream(stdout, true, StandardCharsets.UTF_8),
+            new PrintStream(stderr, true, StandardCharsets.UTF_8)
+        );
+
+        assertThat(exitCode).isEqualTo(0);
+        assertThat(stdout.toString(StandardCharsets.UTF_8))
+            .contains("Usage:")
+            .contains("depviz open [options]")
+            .contains("Commands:")
+            .contains("version");
+        assertThat(stderr.toString(StandardCharsets.UTF_8)).isEmpty();
+    }
+
+    @Test
+    void printsOpenHelpWithoutInspectingProject() {
+        ByteArrayOutputStream stdout = new ByteArrayOutputStream();
+        ByteArrayOutputStream stderr = new ByteArrayOutputStream();
+
+        int exitCode = Main.runMain(
+            new String[] {"open", "-h"},
+            dir,
+            false,
+            new PrintStream(stdout, true, StandardCharsets.UTF_8),
+            new PrintStream(stderr, true, StandardCharsets.UTF_8)
+        );
+
+        assertThat(exitCode).isEqualTo(0);
+        assertThat(stdout.toString(StandardCharsets.UTF_8))
+            .contains("Usage: depviz open [options]")
+            .contains("--no-updates")
+            .contains("--refresh-dependencies")
+            .contains("Corporate Maven mirrors");
+        assertThat(stderr.toString(StandardCharsets.UTF_8)).isEmpty();
     }
 
     @Test

@@ -32,7 +32,7 @@ scripts/prepare-release-assets.sh 0.1.0
 
 - Maven Central: `depviz-core`, `depviz-maven-plugin`, `depviz-cli`
 - Gradle Plugin Portal: `io.github.lucasgois1.depviz`
-- GitHub Releases: `depviz-cli.jar`, `install.sh`, `checksums.txt`
+- GitHub Releases: `depviz-cli.jar`, `depviz-maven-repository.tar.gz`, `install.sh`, `checksums.txt`
 
 Remote publication requires signing credentials, Maven Central namespace setup, Gradle Plugin Portal credentials, and a GitHub release token.
 
@@ -60,7 +60,7 @@ GitHub release creation uses the built-in `GITHUB_TOKEN`; no extra release token
 5. Create a Gradle Plugin Portal account and API key, then save `GRADLE_PUBLISH_KEY` and `GRADLE_PUBLISH_SECRET`.
 6. Push `main`.
 7. Create and push tag `v0.1.0`, or run the `GitHub Release` workflow manually with version `0.1.0`.
-8. Confirm the GitHub release contains `depviz-cli.jar`, `install.sh`, and `checksums.txt`.
+8. Confirm the GitHub release contains `depviz-cli.jar`, `depviz-maven-repository.tar.gz`, `install.sh`, and `checksums.txt`.
 9. Run the `Publish Maven Central` workflow with version `0.1.0`. Keep `auto_publish=false` for the first release so you can review the Central deployment before clicking publish.
 10. Run the `Publish Gradle Plugin` workflow with version `0.1.0` after Maven Central has the `depviz-core` artifact available.
 
@@ -103,6 +103,7 @@ Validate the installed CLI from another Java project:
 - Maven Central releases are immutable. If `0.1.0` is published incorrectly, the next fix must be `0.1.1`.
 - The Gradle Plugin Portal can require first-plugin approval. Watch the workflow output and plugin portal UI after the first submission.
 - The CLI uses the jar manifest `Implementation-Version` at runtime, so `depviz-cli.jar` from `v0.1.0` delegates to Maven/Gradle plugins `0.1.0`.
+- The installer also downloads `depviz-maven-repository.tar.gz` when present and extracts the Depviz artifacts into `~/.m2/repository`. This makes `depviz open` usable in projects whose Maven settings route Central through a corporate mirror that has not synced Depviz yet.
 - The repository can keep developing on `0.1.0-SNAPSHOT`; the release workflows rewrite versions in the temporary GitHub Actions workspace.
 
 ## Historical Notes

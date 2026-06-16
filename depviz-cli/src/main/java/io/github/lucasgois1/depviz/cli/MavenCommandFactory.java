@@ -13,6 +13,9 @@ public final class MavenCommandFactory {
     public List<String> command(CliOptions options, String executable) {
         List<String> command = new ArrayList<>();
         command.add(executable);
+        if (options.refreshDependencies()) {
+            command.add("-U");
+        }
         command.add("io.github.lucasgois1.depviz:depviz-maven-plugin:" + version + ":open");
         addUnlessDefault(command, "depviz.scope", options.scope(), "runtime");
         if (options.open() != null) {
@@ -20,6 +23,9 @@ public final class MavenCommandFactory {
         }
         add(command, "depviz.outputDirectory", options.output());
         add(command, "depviz.layout", options.layout());
+        if (options.checkUpdates() != null) {
+            add(command, "depviz.checkUpdates", options.checkUpdates().toString());
+        }
         addUnlessDefault(command, "depviz.snyk", options.snyk(), "auto");
         add(command, "depviz.snykJson", options.snykJson());
         add(command, "depviz.snykOrg", options.snykOrg());

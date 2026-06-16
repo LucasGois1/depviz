@@ -8,8 +8,19 @@ import org.junit.jupiter.api.Test;
 class GradleCommandFactoryTest {
     @Test
     void buildsCommandUsingInitScriptAndDepvizOpenTask() {
-        assertThat(new GradleCommandFactory().command("gradle", Path.of("/tmp/depviz.gradle"))).containsExactly(
+        assertThat(new GradleCommandFactory().command("gradle", Path.of("/tmp/depviz.gradle"), false)).containsExactly(
             "gradle",
+            "--init-script",
+            "/tmp/depviz.gradle",
+            ":depvizOpen"
+        );
+    }
+
+    @Test
+    void refreshesDependenciesWhenRequested() {
+        assertThat(new GradleCommandFactory().command("gradle", Path.of("/tmp/depviz.gradle"), true)).containsExactly(
+            "gradle",
+            "--refresh-dependencies",
             "--init-script",
             "/tmp/depviz.gradle",
             ":depvizOpen"
