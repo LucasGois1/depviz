@@ -1,11 +1,58 @@
 package io.github.lucasgois1.depviz.gradle;
 
+import io.github.lucasgois1.depviz.config.DepvizConfig;
+import io.github.lucasgois1.depviz.graph.DependencyNodeInput;
+import io.github.lucasgois1.depviz.graph.GraphDocument;
+import io.github.lucasgois1.depviz.graph.GraphDocumentBuilder;
+import io.github.lucasgois1.depviz.graph.ProjectInfo;
+import io.github.lucasgois1.depviz.output.OutputFiles;
+import io.github.lucasgois1.depviz.output.ViewerWriter;
+import io.github.lucasgois1.depviz.version.VersionCheckResult;
+import java.io.IOException;
+import java.util.List;
 import org.gradle.api.DefaultTask;
+import org.gradle.api.GradleException;
+import org.gradle.api.Project;
 import org.gradle.api.tasks.TaskAction;
 
 public abstract class DepvizOpenTask extends DefaultTask {
     @TaskAction
     public void open() {
-        getLogger().lifecycle("Depviz Gradle plugin is registered.");
+        Project project = getProject();
+        DepvizExtension extension = project.getExtensions().getByType(DepvizExtension.class);
+        DependencyNodeInput root = new GradleDependencyGraphExtractor().extract(project, extension.getScope().get());
+        DepvizConfig config = DepvizConfig.fromRaw(
+            extension.getScope().get(),
+            Boolean.toString(extension.getOpen().get()),
+            null,
+            extension.getLayout().get(),
+            null,
+            null,
+            null,
+            "false",
+            project.getLayout().getBuildDirectory().dir("depviz").get().getAsFile().toPath(),
+            extension.getSnyk().get(),
+            extension.getSnykJson().isPresent() ? extension.getSnykJson().get().getAsFile().toPath().toString() : null,
+            null,
+            null,
+            null
+        );
+        ProjectInfo projectInfo = new ProjectInfo(
+            root.coordinate().groupId(),
+            root.coordinate().artifactId(),
+            root.coordinate().version(),
+            "gradle",
+            project.getName(),
+            project.getProjectDir().toPath().toAbsolutePath().normalize().toString(),
+            false,
+            List.of()
+        );
+        GraphDocument document = new GraphDocumentBuilder().build(root, projectInfo, config, VersionCheckResult.disabled());
+        try {
+            OutputFiles output = new ViewerWriter().write(document, config.outputDirectory());
+            getLogger().lifecycle("Generated depviz viewer: {}", output.htmlFile().toAbsolutePath().normalize());
+        } catch (IOException exception) {
+            throw new GradleException("Failed to write depviz viewer: " + exception.getMessage(), exception);
+        }
     }
 }

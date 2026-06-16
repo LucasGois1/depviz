@@ -42,4 +42,42 @@ class DepvizGradlePluginTest {
         assertThat(result.getOutput()).contains("depvizOpen");
         assertThat(result.task(":tasks").getOutcome()).isEqualTo(TaskOutcome.SUCCESS);
     }
+
+    @Test
+    void generatesSingleProjectRuntimeGraph() throws Exception {
+        Files.writeString(projectDir.resolve("settings.gradle.kts"), """
+            dependencyResolutionManagement {
+                repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+                repositories { mavenCentral() }
+            }
+
+            rootProject.name = "gradle-sample"
+            """);
+        Files.writeString(projectDir.resolve("build.gradle.kts"), """
+            plugins {
+                java
+                id("io.github.lucasgois1.depviz")
+            }
+
+            dependencies {
+                runtimeOnly("org.slf4j:slf4j-api:2.0.13")
+            }
+
+            depviz {
+                open.set(false)
+            }
+            """);
+
+        var result = GradleRunner.create()
+            .withProjectDir(projectDir.toFile())
+            .withPluginClasspath()
+            .withArguments("depvizOpen", "--stacktrace")
+            .build();
+
+        Path json = projectDir.resolve("build/depviz/dependency-graph.json");
+        assertThat(result.task(":depvizOpen").getOutcome()).isEqualTo(TaskOutcome.SUCCESS);
+        assertThat(json).exists();
+        assertThat(Files.readString(json)).contains("\"artifactId\" : \"gradle-sample\"");
+        assertThat(Files.readString(json)).contains("\"artifactId\" : \"slf4j-api\"");
+    }
 }
