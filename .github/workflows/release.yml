@@ -1,0 +1,80 @@
+name: GitHub Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version without leading v, for example 0.1.0
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish GitHub release assets
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Resolve release version
+        id: version
+        shell: bash
+        run: |
+          if [[ "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="${{ inputs.version }}"
+          fi
+          if [[ -z "${VERSION}" || "${VERSION}" == v* ]]; then
+            echo "Invalid release version: ${VERSION}" >&2
+            exit 2
+          fi
+          echo "version=${VERSION}" >> "${GITHUB_OUTPUT}"
+          echo "tag=v${VERSION}" >> "${GITHUB_OUTPUT}"
+
+      - name: Set project version
+        run: scripts/set-version.sh "${{ steps.version.outputs.version }}"
+
+      - name: Maven verify
+        run: mvn -B -Dstyle.color=never verify
+
+      - name: Install core for Gradle plugin tests
+        run: mvn -B -pl depviz-core -am install -DskipTests
+
+      - name: Gradle plugin tests
+        run: ./gradlew :depviz-gradle-plugin:test --rerun-tasks --no-daemon
+
+      - name: Build release assets
+        run: scripts/prepare-release-assets.sh "${{ steps.version.outputs.version }}"
+
+      - name: Create or update GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          if gh release view "${TAG}" >/dev/null 2>&1; then
+            gh release upload "${TAG}" dist/depviz-cli.jar dist/install.sh dist/checksums.txt --clobber
+          else
+            gh release create "${TAG}" dist/depviz-cli.jar dist/install.sh dist/checksums.txt \
+              --target "${GITHUB_SHA}" \
+              --title "Depviz ${TAG}" \
+              --generate-notes
+          fi

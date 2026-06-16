@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+      - "codex/**"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify Maven and Gradle
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Maven verify
+        run: mvn -B -Dstyle.color=never verify
+
+      - name: Install core for Gradle plugin tests
+        run: mvn -B -pl depviz-core -am install -DskipTests
+
+      - name: Gradle plugin tests
+        run: ./gradlew :depviz-gradle-plugin:test --rerun-tasks --no-daemon

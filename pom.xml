@@ -13,6 +13,34 @@
   <description>Offline interactive Java dependency graph viewer.</description>
   <url>https://github.com/lucasgois1/depviz</url>
 
+  <licenses>
+    <license>
+      <name>Apache License, Version 2.0</name>
+      <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+
+  <developers>
+    <developer>
+      <id>lucasgois1</id>
+      <name>Lucas Gois</name>
+      <url>https://github.com/lucasgois1</url>
+    </developer>
+  </developers>
+
+  <scm>
+    <connection>scm:git:https://github.com/lucasgois1/depviz.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com/lucasgois1/depviz.git</developerConnection>
+    <url>https://github.com/lucasgois1/depviz</url>
+    <tag>HEAD</tag>
+  </scm>
+
+  <issueManagement>
+    <system>GitHub Issues</system>
+    <url>https://github.com/lucasgois1/depviz/issues</url>
+  </issueManagement>
+
   <modules>
     <module>depviz-core</module>
     <module>depviz-maven-plugin</module>
@@ -31,6 +59,11 @@
     <jackson.version>2.20.1</jackson.version>
     <junit.version>5.14.1</junit.version>
     <assertj.version>3.27.6</assertj.version>
+    <maven.source.plugin.version>3.3.1</maven.source.plugin.version>
+    <maven.javadoc.plugin.version>3.11.2</maven.javadoc.plugin.version>
+    <maven.gpg.plugin.version>3.2.8</maven.gpg.plugin.version>
+    <central.publishing.maven.plugin.version>0.10.0</central.publishing.maven.plugin.version>
+    <central.autoPublish>false</central.autoPublish>
   </properties>
 
   <dependencyManagement>
@@ -74,4 +107,46 @@
       </plugins>
     </pluginManagement>
   </build>
+
+  <profiles>
+    <profile>
+      <id>release</id>
+      <build>
+        <plugins>
+          <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-gpg-plugin</artifactId>
+            <version>${maven.gpg.plugin.version}</version>
+            <configuration>
+              <gpgArguments>
+                <arg>--pinentry-mode</arg>
+                <arg>loopback</arg>
+              </gpgArguments>
+              <passphrase>${env.MAVEN_GPG_PASSPHRASE}</passphrase>
+            </configuration>
+            <executions>
+              <execution>
+                <id>sign-artifacts</id>
+                <phase>verify</phase>
+                <goals>
+                  <goal>sign</goal>
+                </goals>
+              </execution>
+            </executions>
+          </plugin>
+          <plugin>
+            <groupId>org.sonatype.central</groupId>
+            <artifactId>central-publishing-maven-plugin</artifactId>
+            <version>${central.publishing.maven.plugin.version}</version>
+            <extensions>true</extensions>
+            <configuration>
+              <publishingServerId>central</publishingServerId>
+              <autoPublish>${central.autoPublish}</autoPublish>
+              <waitUntil>validated</waitUntil>
+            </configuration>
+          </plugin>
+        </plugins>
+      </build>
+    </profile>
+  </profiles>
 </project>

@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-VERSION="${DEPVIZ_VERSION:-0.1.0-SNAPSHOT}"
+VERSION="${DEPVIZ_VERSION:-0.1.0}"
 BASE_URL="${DEPVIZ_BASE_URL:-https://github.com/lucasgois1/depviz/releases/download/v${VERSION}}"
 INSTALL_DIR="${DEPVIZ_HOME:-$HOME/.depviz}"
 BIN_DIR="$INSTALL_DIR/bin"

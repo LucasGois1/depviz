@@ -2,6 +2,8 @@
 
 Depviz is a local-development tool that generates an offline interactive dependency graph viewer for Maven and Gradle projects.
 
+Licensed under the Apache License, Version 2.0.
+
 It writes a self-contained HTML viewer plus the dependency graph JSON and static assets under the build output directory. The viewer is intended for local inspection: open the generated HTML in a browser, pan around the graph, search, filter, inspect dependency paths, and reason about shared dependencies without requiring a server or internet access.
 
 ## Requirements
@@ -37,12 +39,18 @@ mvn -q -DskipTests=false install
 
 This builds and installs `io.github.lucasgois1.depviz:depviz-maven-plugin:0.1.0-SNAPSHOT` into your local Maven repository.
 
-## Direct Maven Usage
-
-After the plugin is installed locally, run it from any Maven project you want to inspect:
+To test the local snapshot from another Maven project:
 
 ```bash
 mvn io.github.lucasgois1.depviz:depviz-maven-plugin:0.1.0-SNAPSHOT:open
+```
+
+## Direct Maven Usage
+
+After the public artifacts are published to Maven Central, run it from any Maven project you want to inspect:
+
+```bash
+mvn io.github.lucasgois1.depviz:depviz-maven-plugin:0.1.0:open
 ```
 
 Use the full coordinate so no Maven `pluginGroups` setup is required.
@@ -67,7 +75,7 @@ When applied to a Gradle project:
 
 ```kotlin
 plugins {
-  id("io.github.lucasgois1.depviz") version "0.1.0-SNAPSHOT"
+  id("io.github.lucasgois1.depviz") version "0.1.0"
 }
 ```
 
@@ -114,7 +122,7 @@ mvn depviz:open -Ddepviz.snykJson=target/snyk.json
 Use the fully qualified plugin coordinate when the short prefix is unavailable:
 
 ```bash
-mvn io.github.lucasgois1.depviz:depviz-maven-plugin:0.1.0-SNAPSHOT:open -Ddepviz.open=false
+mvn io.github.lucasgois1.depviz:depviz-maven-plugin:0.1.0:open -Ddepviz.open=false
 ```
 
 ## Snyk Vulnerability Insights
@@ -205,13 +213,19 @@ The generated viewer supports:
 Use the fully qualified coordinate:
 
 ```bash
-mvn io.github.lucasgois1.depviz:depviz-maven-plugin:0.1.0-SNAPSHOT:open
+mvn io.github.lucasgois1.depviz:depviz-maven-plugin:0.1.0:open
 ```
 
-If the artifact is not installed locally yet, build this repository first:
+If you are working from source before a public release, build this repository first:
 
 ```bash
 mvn -q -DskipTests=false install
+```
+
+Then use the local snapshot coordinate:
+
+```bash
+mvn io.github.lucasgois1.depviz:depviz-maven-plugin:0.1.0-SNAPSHOT:open
 ```
 
 ### The browser did not open
@@ -281,7 +295,7 @@ The generated JSON may include project coordinates, dependency coordinates, vers
 ## Known Limitations
 
 - This is a local-development plugin and is not intended as a CI reporting system.
-- The artifact is currently `0.1.0-SNAPSHOT`, so consumers should install it locally before use.
+- Before the first public release is published, consumers can install the current snapshot locally with `mvn -q -DskipTests=false install`.
 - Only `depviz.nodeMode=artifact` is implemented. Occurrence-mode visualization is intentionally not available yet.
 - The viewer is generated as static files; it does not persist user interactions back to Maven or the JSON file.
 - Graph quality depends on the Maven dependency graph Maven can resolve for the current project and selected scope.

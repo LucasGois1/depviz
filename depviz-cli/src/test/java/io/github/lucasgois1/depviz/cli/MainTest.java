@@ -69,4 +69,30 @@ class MainTest {
             .doesNotContain("Exception")
             .doesNotContain("\tat ");
     }
+
+    @Test
+    void fallsBackToSnapshotVersionWhenManifestVersionIsUnavailable() {
+        String previous = System.clearProperty("depviz.version");
+        try {
+            assertThat(Main.resolveVersion()).isEqualTo("0.1.0-SNAPSHOT");
+        } finally {
+            if (previous != null) {
+                System.setProperty("depviz.version", previous);
+            }
+        }
+    }
+
+    @Test
+    void usesConfiguredVersionWhenRunningFromTestsOrBuildTool() {
+        String previous = System.setProperty("depviz.version", "9.8.7");
+        try {
+            assertThat(Main.resolveVersion()).isEqualTo("9.8.7");
+        } finally {
+            if (previous == null) {
+                System.clearProperty("depviz.version");
+            } else {
+                System.setProperty("depviz.version", previous);
+            }
+        }
+    }
 }

@@ -1,0 +1,82 @@
+name: Publish Maven Central
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Release version without leading v, for example 0.1.0
+        required: true
+        type: string
+      auto_publish:
+        description: Automatically publish after Central validates the deployment
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    name: Deploy Maven artifacts to Central Portal
+    runs-on: ubuntu-latest
+    env:
+      CENTRAL_USERNAME: ${{ secrets.CENTRAL_USERNAME }}
+      CENTRAL_PASSWORD: ${{ secrets.CENTRAL_PASSWORD }}
+      MAVEN_GPG_PRIVATE_KEY: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
+      MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: maven
+
+      - name: Validate required secrets
+        shell: bash
+        run: |
+          test -n "${CENTRAL_USERNAME}" || { echo "Missing CENTRAL_USERNAME" >&2; exit 2; }
+          test -n "${CENTRAL_PASSWORD}" || { echo "Missing CENTRAL_PASSWORD" >&2; exit 2; }
+          test -n "${MAVEN_GPG_PRIVATE_KEY}" || { echo "Missing MAVEN_GPG_PRIVATE_KEY" >&2; exit 2; }
+          test -n "${MAVEN_GPG_PASSPHRASE}" || { echo "Missing MAVEN_GPG_PASSPHRASE" >&2; exit 2; }
+
+      - name: Set project version
+        run: scripts/set-version.sh "${{ inputs.version }}"
+
+      - name: Import GPG key
+        shell: bash
+        run: |
+          mkdir -p ~/.gnupg
+          chmod 700 ~/.gnupg
+          printf '%s\n' "${MAVEN_GPG_PRIVATE_KEY}" | gpg --batch --import
+
+      - name: Configure Maven Central credentials
+        shell: bash
+        run: |
+          mkdir -p ~/.m2
+          cat > ~/.m2/settings.xml <<EOF
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+                    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                    xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd">
+            <servers>
+              <server>
+                <id>central</id>
+                <username>${CENTRAL_USERNAME}</username>
+                <password>${CENTRAL_PASSWORD}</password>
+              </server>
+            </servers>
+          </settings>
+          EOF
+
+      - name: Verify before deploy
+        run: mvn -B -Dstyle.color=never verify
+
+      - name: Deploy to Maven Central Portal
+        run: >
+          mvn -B -Prelease -DskipTests
+          -Dcentral.autoPublish=${{ inputs.auto_publish }}
+          deploy

@@ -5,7 +5,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 public final class Main {
-    static final String VERSION = "0.1.0-SNAPSHOT";
+    static final String VERSION = resolveVersion();
 
     private Main() {}
 
@@ -41,6 +41,18 @@ public final class Main {
         }
         Path initScript = new GradleInitScriptWriter(VERSION).write(options.projectDir(), options);
         return runner.run(options.projectDir(), new GradleCommandFactory().command(ExecutableSelector.gradle(options.projectDir()), initScript));
+    }
+
+    static String resolveVersion() {
+        String configuredVersion = System.getProperty("depviz.version");
+        if (configuredVersion != null && !configuredVersion.isBlank()) {
+            return configuredVersion;
+        }
+        String implementationVersion = Main.class.getPackage().getImplementationVersion();
+        if (implementationVersion == null || implementationVersion.isBlank()) {
+            return "0.1.0-SNAPSHOT";
+        }
+        return implementationVersion;
     }
 
     static BuildTool selectTool(
