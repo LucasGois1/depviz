@@ -27,7 +27,7 @@ public final class GradleInitScriptWriter {
             }
             allprojects { project ->
               if (project == project.rootProject) {
-                project.apply plugin: 'io.github.lucasgois1.depviz'
+                project.apply plugin: io.github.lucasgois1.depviz.gradle.DepvizGradlePlugin
                 project.extensions.configure('depviz') { depviz ->
             """.formatted(escape(version)));
         addString(script, "scope", options.scope());

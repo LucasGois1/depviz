@@ -20,7 +20,7 @@ class GradleInitScriptWriterTest {
         assertThat(script.normalize().startsWith(tempDir.normalize())).isFalse();
         String text = Files.readString(script);
         assertThat(text).contains("classpath 'io.github.lucasgois1.depviz:depviz-gradle-plugin:0.1.0-SNAPSHOT'");
-        assertThat(text).contains("project.apply plugin: 'io.github.lucasgois1.depviz'");
+        assertThat(text).contains("project.apply plugin: io.github.lucasgois1.depviz.gradle.DepvizGradlePlugin");
         assertThat(text).contains("scope.set('runtime')");
         assertThat(text).contains("open.set(false)");
         assertThat(text).contains("outputDirectory.set(project.layout.projectDirectory.dir('custom'))");
