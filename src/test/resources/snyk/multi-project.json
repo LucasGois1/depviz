@@ -1,0 +1,32 @@
+[
+  {
+    "packageManager": "maven",
+    "displayTargetFile": "api/pom.xml",
+    "vulnerabilities": [
+      {
+        "id": "SNYK-JAVA-ORGSHARED-1",
+        "severity": "critical",
+        "title": "Critical shared issue",
+        "packageName": "org.shared:shared-lib",
+        "version": "2.0.0",
+        "fixedIn": ["2.0.5"],
+        "url": "https://security.snyk.io/vuln/SNYK-JAVA-ORGSHARED-1"
+      }
+    ]
+  },
+  {
+    "packageManager": "maven",
+    "displayTargetFile": "worker/pom.xml",
+    "vulnerabilities": [
+      {
+        "id": "SNYK-JAVA-UNMAPPED-1",
+        "severity": "low",
+        "title": "Unmapped package issue",
+        "packageName": "org.unknown:missing-lib",
+        "version": "9.9.9",
+        "fixedIn": ["10.0.0"],
+        "url": "https://security.snyk.io/vuln/SNYK-JAVA-UNMAPPED-1"
+      }
+    ]
+  }
+]

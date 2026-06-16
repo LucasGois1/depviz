@@ -1,0 +1,23 @@
+{
+  "ok": false,
+  "vulnerabilities": [
+    {
+      "id": "SNYK-JAVA-ORGEXAMPLE-1",
+      "severity": "high",
+      "title": "High demo issue",
+      "packageName": "org.example:lib",
+      "version": "1.0.0",
+      "fixedIn": ["1.0.2"],
+      "url": "https://security.snyk.io/vuln/SNYK-JAVA-ORGEXAMPLE-1"
+    },
+    {
+      "id": "SNYK-JAVA-ORGEXAMPLE-2",
+      "severity": "medium",
+      "title": "Medium demo issue",
+      "packageName": "org.example:lib",
+      "version": "1.0.0",
+      "fixedIn": [],
+      "url": "https://security.snyk.io/vuln/SNYK-JAVA-ORGEXAMPLE-2"
+    }
+  ]
+}
