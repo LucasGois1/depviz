@@ -4,7 +4,7 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   build: {
-    outDir: "../target/generated-resources/depviz/assets",
+    outDir: "../depviz-core/target/generated-resources/depviz/assets",
     emptyOutDir: true,
     cssCodeSplit: false,
     sourcemap: false,

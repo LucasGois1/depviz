@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Objects;
 
 public class ViewerWriter {
-    private static final String TEMPLATE_RESOURCE = "/depviz/dependency-graph.html.tpl";
+    private static final String TEMPLATE_RESOURCE = "depviz/dependency-graph.html.tpl";
     private static final String DATA_PLACEHOLDER = "{{DEPVIZ_DATA}}";
     private static final String APP_ASSET_PLACEHOLDER = "{{APP_ASSET}}";
     private static final String STYLE_ASSET_PLACEHOLDER = "{{STYLE_ASSET}}";
@@ -61,7 +61,7 @@ public class ViewerWriter {
     }
 
     private static String template() throws IOException {
-        try (InputStream inputStream = ViewerWriter.class.getResourceAsStream(TEMPLATE_RESOURCE)) {
+        try (InputStream inputStream = resourceStream(TEMPLATE_RESOURCE)) {
             if (inputStream == null) {
                 throw new IOException("Missing viewer template resource: " + TEMPLATE_RESOURCE);
             }
@@ -71,14 +71,25 @@ public class ViewerWriter {
 
     private static void copyAssets(Path assetsDirectory) throws IOException {
         for (String asset : ASSETS) {
-            String resource = "/depviz/assets/" + asset;
-            try (InputStream inputStream = ViewerWriter.class.getResourceAsStream(resource)) {
+            String resource = "depviz/assets/" + asset;
+            try (InputStream inputStream = resourceStream(resource)) {
                 if (inputStream == null) {
                     throw new IOException("Missing viewer asset resource: " + resource);
                 }
                 Files.copy(inputStream, assetsDirectory.resolve(asset), StandardCopyOption.REPLACE_EXISTING);
             }
         }
+    }
+
+    private static InputStream resourceStream(String resource) {
+        ClassLoader loader = Thread.currentThread().getContextClassLoader();
+        if (loader != null) {
+            InputStream inputStream = loader.getResourceAsStream(resource);
+            if (inputStream != null) {
+                return inputStream;
+            }
+        }
+        return ViewerWriter.class.getClassLoader().getResourceAsStream(resource);
     }
 
     private static String assetReference(Path assetsDirectory, String asset) throws IOException {

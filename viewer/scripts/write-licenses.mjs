@@ -1,6 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
+const assetsDir = process.env.npm_package_config_assetsDir ?? "../depviz-core/target/generated-resources/depviz/assets";
 const packageJson = JSON.parse(await readFile(resolve("package.json"), "utf8"));
 const packageLock = JSON.parse(await readFile(resolve("package-lock.json"), "utf8"));
 const dependencyNames = [
@@ -21,4 +22,4 @@ for (const dependencyName of dependencyNames) {
   lines.push(`${dependencyName}@${packageInfo?.version ?? "unknown"} - ${packageInfo?.license ?? "license metadata unavailable"}`);
 }
 
-await writeFile(resolve("../target/generated-resources/depviz/assets/LICENSES.txt"), `${lines.join("\n")}\n`, "utf8");
+await writeFile(resolve(assetsDir, "LICENSES.txt"), `${lines.join("\n")}\n`, "utf8");
