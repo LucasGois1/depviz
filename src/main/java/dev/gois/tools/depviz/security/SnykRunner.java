@@ -11,10 +11,21 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 public final class SnykRunner {
     private static final Duration TIMEOUT = Duration.ofMinutes(5);
+
+    private final TempFileFactory tempFileFactory;
+
+    public SnykRunner() {
+        this(Files::createTempFile);
+    }
+
+    SnykRunner(TempFileFactory tempFileFactory) {
+        this.tempFileFactory = Objects.requireNonNull(tempFileFactory, "tempFileFactory");
+    }
 
     public SecurityCheckResult run(DepvizConfig config, Path workingDirectory) {
         if (config.snykMode() == SnykMode.FALSE) {
@@ -26,10 +37,10 @@ public final class SnykRunner {
 
         Path output;
         try {
-            output = Files.createTempFile("depviz-snyk-", ".json");
+            output = tempFileFactory.create("depviz-snyk-", ".json");
         } catch (IOException exception) {
             return SecurityCheckResult.unavailable(
-                "snyk-scan-failed",
+                failureType(config),
                 "Unable to create Snyk output file: " + exception.getMessage()
             );
         }
@@ -58,8 +69,7 @@ public final class SnykRunner {
                 stderr.isBlank() ? "Snyk CLI did not produce JSON output." : stderr.trim()
             );
         } catch (IOException exception) {
-            String type = config.snykMode() == SnykMode.AUTO ? "snyk-unavailable" : "snyk-scan-failed";
-            return SecurityCheckResult.unavailable(type, exception.getMessage());
+            return SecurityCheckResult.unavailable(failureType(config), exception.getMessage());
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             return SecurityCheckResult.unavailable("snyk-scan-failed", "Snyk CLI was interrupted.");
@@ -103,11 +113,20 @@ public final class SnykRunner {
         return "snyk-scan-failed";
     }
 
+    private static String failureType(DepvizConfig config) {
+        return config.snykMode() == SnykMode.AUTO ? "snyk-unavailable" : "snyk-scan-failed";
+    }
+
     private static void deleteIfExists(Path path) {
         try {
             Files.deleteIfExists(path);
         } catch (IOException exception) {
             // Best-effort cleanup only.
         }
+    }
+
+    @FunctionalInterface
+    interface TempFileFactory {
+        Path create(String prefix, String suffix) throws IOException;
     }
 }

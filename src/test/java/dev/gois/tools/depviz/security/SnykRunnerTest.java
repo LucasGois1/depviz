@@ -3,6 +3,7 @@ package dev.gois.tools.depviz.security;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.gois.tools.depviz.config.DepvizConfig;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
@@ -89,5 +90,40 @@ class SnykRunnerTest {
             assertThat(diagnostic.severity()).isEqualTo("warning");
             assertThat(diagnostic.type()).isEqualTo("snyk-unavailable");
         });
+    }
+
+    @Test
+    void tempFileCreationFailureInAutoModeReturnsUnavailableDiagnostic() {
+        SecurityCheckResult result = new SnykRunner((prefix, suffix) -> {
+            throw new IOException("disk full");
+        }).run(configWithSnyk("auto"), tempDir);
+
+        assertThat(result.enabled()).isTrue();
+        assertThat(result.checked()).isFalse();
+        assertThat(result.diagnostics()).singleElement().satisfies(diagnostic -> {
+            assertThat(diagnostic.type()).isEqualTo("snyk-unavailable");
+            assertThat(diagnostic.message()).contains("disk full");
+        });
+    }
+
+    @Test
+    void tempFileCreationFailureInTrueModeReturnsScanFailedDiagnostic() {
+        SecurityCheckResult result = new SnykRunner((prefix, suffix) -> {
+            throw new IOException("disk full");
+        }).run(configWithSnyk("true"), tempDir);
+
+        assertThat(result.enabled()).isTrue();
+        assertThat(result.checked()).isFalse();
+        assertThat(result.diagnostics()).singleElement().satisfies(diagnostic -> {
+            assertThat(diagnostic.type()).isEqualTo("snyk-scan-failed");
+            assertThat(diagnostic.message()).contains("disk full");
+        });
+    }
+
+    private DepvizConfig configWithSnyk(String snyk) {
+        return DepvizConfig.fromRaw(
+            null, "false", null, null, null, null, null, null, tempDir,
+            snyk, null, tempDir.resolve("missing-snyk").toString(), null, null
+        );
     }
 }

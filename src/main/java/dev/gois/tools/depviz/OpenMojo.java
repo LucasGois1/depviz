@@ -100,11 +100,9 @@ public final class OpenMojo extends AbstractMojo {
             new MavenDependencyGraphExtractor(dependencyCollectorBuilder)
         ).extract(project, reactorProjects, config);
         VersionCheckResult versionCheck = checkVersions(root, config);
+        GraphDocument initialDocument = new GraphDocumentBuilder().build(root, projectInfo(), config, versionCheck);
         SecurityCheckResult securityCheck = checkSecurity(config);
-        GraphDocument document = new SecurityGraphEnricher().enrich(
-            new GraphDocumentBuilder().build(root, projectInfo(), config, versionCheck),
-            securityCheck
-        );
+        GraphDocument document = new SecurityGraphEnricher().enrich(initialDocument, securityCheck);
         OutputFiles outputFiles = write(document, config);
         URI htmlUri = outputFiles.htmlFile().toAbsolutePath().normalize().toUri();
 
