@@ -125,6 +125,36 @@ class SnykRunnerTest {
     }
 
     @Test
+    void nonVulnerabilityJsonFromFailedCliReturnsDiagnostic() throws Exception {
+        Path command = tempDir.resolve("snyk-error.sh");
+        Files.writeString(command, """
+            #!/bin/sh
+            for arg in "$@"; do
+              case "$arg" in
+                --json-file-output=*) output="${arg#--json-file-output=}" ;;
+              esac
+            done
+            printf '{"error":"Authentication failed"}' > "$output"
+            printf 'Authentication failed\\n' >&2
+            exit 2
+            """);
+        assertThat(command.toFile().setExecutable(true)).isTrue();
+        DepvizConfig config = DepvizConfig.fromRaw(
+            null, "false", null, null, null, null, null, null, tempDir,
+            "auto", null, command.toString(), null, null
+        );
+
+        SecurityCheckResult result = new SnykRunner().run(config, tempDir);
+
+        assertThat(result.checked()).isFalse();
+        assertThat(result.findings()).isEmpty();
+        assertThat(result.diagnostics()).singleElement().satisfies(diagnostic -> {
+            assertThat(diagnostic.type()).isEqualTo("snyk-auth-failed");
+            assertThat(diagnostic.message()).contains("Authentication failed");
+        });
+    }
+
+    @Test
     void tempFileCreationFailureInAutoModeReturnsUnavailableDiagnostic() {
         SecurityCheckResult result = new SnykRunner((prefix, suffix) -> {
             throw new IOException("disk full");

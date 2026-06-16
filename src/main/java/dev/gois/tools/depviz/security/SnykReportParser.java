@@ -53,15 +53,27 @@ public final class SnykReportParser {
     private static void addFinding(JsonNode vulnerability, List<SecurityFinding> findings) {
         String packageName = text(vulnerability, "packageName", text(vulnerability, "name", ""));
         String version = text(vulnerability, "version", "");
+        String id = text(vulnerability, "id", text(vulnerability, "issueId", "unknown"));
         findings.add(new SecurityFinding(
-            text(vulnerability, "id", text(vulnerability, "issueId", "unknown")),
+            id,
             SecuritySeverity.parse(text(vulnerability, "severity", "low")),
             text(vulnerability, "title", text(vulnerability, "name", "Untitled Snyk finding")),
             packageName,
             version,
             stringArray(vulnerability.path("fixedIn")),
-            text(vulnerability, "url", "")
+            advisoryUrl(vulnerability, id)
         ));
+    }
+
+    private static String advisoryUrl(JsonNode vulnerability, String id) {
+        String url = text(vulnerability, "url", "");
+        if (!url.isBlank()) {
+            return url;
+        }
+        if (id.startsWith("SNYK-")) {
+            return "https://security.snyk.io/vuln/" + id;
+        }
+        return "";
     }
 
     private static String text(JsonNode node, String field, String fallback) {

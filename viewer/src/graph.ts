@@ -92,9 +92,9 @@ export function layoutDisplayName(layout: LayoutName): string {
 }
 
 export function availableScopes(document: DepvizDocument): string[] {
-  return Object.keys(document.summary.nodesByScope).sort((left, right) => {
-    if (left === "root") return -1;
-    if (right === "root") return 1;
-    return left.localeCompare(right);
-  });
+  return Object.keys(document.summary.nodesByScope).filter(isFilterableScope).sort((left, right) => left.localeCompare(right));
+}
+
+function isFilterableScope(scope: string): boolean {
+  return scope !== "root" && scope !== "module";
 }

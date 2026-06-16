@@ -73,6 +73,28 @@ class SnykReportParserTest {
     }
 
     @Test
+    void synthesizesSnykAdvisoryUrlWhenReportOmitsUrl() {
+        String json = """
+            {
+              "vulnerabilities": [
+                {
+                  "id": "SNYK-JAVA-ORGEXAMPLE-42",
+                  "severity": "high",
+                  "packageName": "org.example:lib",
+                  "version": "1.0.0"
+                }
+              ]
+            }
+            """;
+
+        SecurityCheckResult result = parser.parse(json);
+
+        assertThat(result.findings()).singleElement().satisfies(finding ->
+            assertThat(finding.url()).isEqualTo("https://security.snyk.io/vuln/SNYK-JAVA-ORGEXAMPLE-42")
+        );
+    }
+
+    @Test
     void invalidJsonReturnsDiagnosticInsteadOfThrowing() {
         SecurityCheckResult result = parser.parse("{not-json");
 

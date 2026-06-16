@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildAdjacency, dependencyFanIn, hasSharedDependencies, recommendedInitialLayout, shouldShowAllLabelsInitially } from "./graph";
+import { availableScopes, buildAdjacency, dependencyFanIn, hasSharedDependencies, recommendedInitialLayout, shouldShowAllLabelsInitially } from "./graph";
 import type { DepvizDocument } from "./types";
 
 const sharedTargetId = "org.shared:logging:jar::2.0.0";
@@ -97,6 +97,17 @@ describe("shouldShowAllLabelsInitially", () => {
 
   it("starts with key labels only when the graph exceeds the configured label limit", () => {
     expect(shouldShowAllLabelsInitially({ ...document, viewerConfig: { ...document.viewerConfig, maxInitialLabels: 2 } })).toBe(false);
+  });
+});
+
+describe("availableScopes", () => {
+  it("excludes structural scopes that are kept as graph context", () => {
+    expect(
+      availableScopes({
+        ...document,
+        summary: { ...document.summary, nodesByScope: { root: 1, module: 2, compile: 3, runtime: 1 } }
+      })
+    ).toEqual(["compile", "runtime"]);
   });
 });
 

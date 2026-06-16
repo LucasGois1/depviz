@@ -60,10 +60,17 @@ public final class SnykRunner {
                     "Snyk CLI timed out after " + TIMEOUT.toSeconds() + " seconds."
                 );
             }
+            String stderr = new String(process.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
+            int exitCode = process.exitValue();
             if (Files.exists(output) && Files.size(output) > 0) {
+                if (!isSnykReportExitCode(exitCode)) {
+                    return SecurityCheckResult.unavailable(
+                        classifyFailure(stderr),
+                        stderr.isBlank() ? "Snyk CLI exited with code " + exitCode + "." : stderr.trim()
+                    );
+                }
                 return new SnykReportParser().parse(Files.readString(output, StandardCharsets.UTF_8));
             }
-            String stderr = new String(process.getErrorStream().readAllBytes(), StandardCharsets.UTF_8);
             return SecurityCheckResult.unavailable(
                 classifyFailure(stderr),
                 stderr.isBlank() ? "Snyk CLI did not produce JSON output." : stderr.trim()
@@ -90,6 +97,10 @@ public final class SnykRunner {
             command.add("--all-projects");
         }
         return command;
+    }
+
+    private static boolean isSnykReportExitCode(int exitCode) {
+        return exitCode == 0 || exitCode == 1;
     }
 
     private static SecurityCheckResult readJson(Path path) {

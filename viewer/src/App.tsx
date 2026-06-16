@@ -47,7 +47,7 @@ export default function App() {
 
   const nodeById = useMemo(() => new Map(documentData.nodes.map((node) => [node.id, node])), [documentData]);
   const adjacency = useMemo(() => buildAdjacency(documentData), [documentData]);
-  const scopes = useMemo(() => availableScopes(documentData).filter((scope) => scope !== "root"), [documentData]);
+  const scopes = useMemo(() => availableScopes(documentData), [documentData]);
   const visibility = useMemo(() => buildVisibility(documentData, filters), [documentData, filters]);
   const selectedNode = selectedNodeId ? nodeById.get(selectedNodeId) ?? null : null;
 
