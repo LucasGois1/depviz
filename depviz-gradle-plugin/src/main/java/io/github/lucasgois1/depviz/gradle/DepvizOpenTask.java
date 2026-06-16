@@ -32,7 +32,7 @@ public abstract class DepvizOpenTask extends DefaultTask {
             null,
             null,
             "false",
-            project.getLayout().getBuildDirectory().dir("depviz").get().getAsFile().toPath(),
+            extension.getOutputDirectory().get().getAsFile().toPath(),
             extension.getSnyk().get(),
             extension.getSnykJson().isPresent() ? extension.getSnykJson().get().getAsFile().toPath().toString() : null,
             null,

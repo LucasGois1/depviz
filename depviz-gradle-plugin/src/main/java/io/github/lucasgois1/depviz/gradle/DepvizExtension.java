@@ -1,5 +1,6 @@
 package io.github.lucasgois1.depviz.gradle;
 
+import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.Property;
@@ -19,6 +20,8 @@ public abstract class DepvizExtension {
     public abstract Property<String> getSnyk();
 
     public abstract Property<String> getLayout();
+
+    public abstract DirectoryProperty getOutputDirectory();
 
     public abstract RegularFileProperty getSnykJson();
 }

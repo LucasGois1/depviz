@@ -38,10 +38,12 @@ final class GradleDependencyGraphExtractor {
     }
 
     DependencyNodeInput extract(Project project, String scope) {
-        Configuration configuration = configuration(project, scope);
         Set<DependencyNodeInput> children = new LinkedHashSet<>();
-        for (ResolvedDependency dependency : configuration.getResolvedConfiguration().getFirstLevelModuleDependencies()) {
-            children.add(toNode(dependency, scope));
+        for (Configuration configuration : configurations(project, scope)) {
+            String nodeScope = scopeFor(scope, configuration);
+            for (ResolvedDependency dependency : configuration.getResolvedConfiguration().getFirstLevelModuleDependencies()) {
+                children.add(toNode(dependency, nodeScope));
+            }
         }
         return new DependencyNodeInput(
             new ArtifactCoordinate(
@@ -87,14 +89,29 @@ final class GradleDependencyGraphExtractor {
         );
     }
 
-    private static Configuration configuration(Project project, String scope) {
-        String name = switch (scope) {
-            case "compile" -> "compileClasspath";
-            case "test" -> "testRuntimeClasspath";
-            case "runtime", "all" -> "runtimeClasspath";
+    private static List<Configuration> configurations(Project project, String scope) {
+        return switch (scope) {
+            case "compile" -> List.of(configurationByName(project, "compileClasspath"));
+            case "runtime" -> List.of(configurationByName(project, "runtimeClasspath"));
+            case "test" -> List.of(configurationByName(project, "testRuntimeClasspath"));
+            case "all" -> List.of(
+                configurationByName(project, "compileClasspath"),
+                configurationByName(project, "runtimeClasspath"),
+                configurationByName(project, "testRuntimeClasspath")
+            );
             default -> throw new IllegalArgumentException("Unsupported Gradle depviz scope: " + scope);
         };
+    }
+
+    private static Configuration configurationByName(Project project, String name) {
         return project.getConfigurations().getByName(name);
+    }
+
+    private static String scopeFor(String requestedScope, Configuration configuration) {
+        if ("all".equals(requestedScope)) {
+            return configuration.getName();
+        }
+        return requestedScope;
     }
 
     private static String stringOrDefault(Object value, String fallback) {

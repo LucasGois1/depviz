@@ -31,6 +31,7 @@ class DepvizGradlePluginTest {
         assertThat(extension.getOpen().get()).isTrue();
         assertThat(extension.getSnyk().get()).isEqualTo("auto");
         assertThat(extension.getLayout().get()).isEqualTo("breadthfirst");
+        assertThat(extension.getOutputDirectory().get().getAsFile()).isEqualTo(project.getLayout().getBuildDirectory().dir("depviz").get().getAsFile());
         assertThat(extension.getSnykJson().isPresent()).isFalse();
     }
 
@@ -144,6 +145,90 @@ class DepvizGradlePluginTest {
         assertThat(nodesByArtifactId(document, "slf4j-api")).hasSize(1);
         assertThat(incomingSources(document, sharedDependency.path("id").asText()))
             .containsExactlyInAnyOrderElementsOf(moduleNodes.stream().map(node -> node.path("id").asText()).toList());
+    }
+
+    @Test
+    void compileScopeUsesCompileClasspath() throws Exception {
+        Files.writeString(projectDir.resolve("settings.gradle.kts"), "rootProject.name = \"scope-sample\"\n");
+        Files.writeString(projectDir.resolve("build.gradle.kts"), """
+            plugins {
+                java
+                id("io.github.lucasgois1.depviz")
+            }
+            repositories { mavenCentral() }
+            dependencies {
+                implementation("org.slf4j:slf4j-api:2.0.13")
+                testRuntimeOnly("org.junit.jupiter:junit-jupiter-api:5.14.1")
+            }
+            depviz {
+                scope.set("compile")
+                open.set(false)
+            }
+            """);
+
+        GradleRunner.create()
+            .withProjectDir(projectDir.toFile())
+            .withPluginClasspath()
+            .withArguments("depvizOpen", "--stacktrace")
+            .build();
+
+        JsonNode document = OBJECT_MAPPER.readTree(Files.readString(projectDir.resolve("build/depviz/dependency-graph.json")));
+        assertThat(nodesByArtifactId(document, "slf4j-api")).hasSize(1);
+        assertThat(nodesByArtifactId(document, "junit-jupiter-api")).isEmpty();
+    }
+
+    @Test
+    void customOutputDirectoryIsRespected() throws Exception {
+        Files.writeString(projectDir.resolve("settings.gradle.kts"), "rootProject.name = \"output-sample\"\n");
+        Files.writeString(projectDir.resolve("build.gradle.kts"), """
+            plugins {
+                java
+                id("io.github.lucasgois1.depviz")
+            }
+            repositories { mavenCentral() }
+            depviz {
+                outputDirectory.set(project.layout.projectDirectory.dir("custom-depviz"))
+                open.set(false)
+            }
+            """);
+
+        GradleRunner.create()
+            .withProjectDir(projectDir.toFile())
+            .withPluginClasspath()
+            .withArguments("depvizOpen", "--stacktrace")
+            .build();
+
+        assertThat(projectDir.resolve("custom-depviz/dependency-graph.json")).exists();
+    }
+
+    @Test
+    void allScopeIncludesCompileRuntimeAndTestConfigurations() throws Exception {
+        Files.writeString(projectDir.resolve("settings.gradle.kts"), "rootProject.name = \"all-scope-sample\"\n");
+        Files.writeString(projectDir.resolve("build.gradle.kts"), """
+            plugins {
+                java
+                id("io.github.lucasgois1.depviz")
+            }
+            repositories { mavenCentral() }
+            dependencies {
+                implementation("org.slf4j:slf4j-api:2.0.13")
+                testRuntimeOnly("org.junit.jupiter:junit-jupiter-api:5.14.1")
+            }
+            depviz {
+                scope.set("all")
+                open.set(false)
+            }
+            """);
+
+        GradleRunner.create()
+            .withProjectDir(projectDir.toFile())
+            .withPluginClasspath()
+            .withArguments("depvizOpen", "--stacktrace")
+            .build();
+
+        JsonNode document = OBJECT_MAPPER.readTree(Files.readString(projectDir.resolve("build/depviz/dependency-graph.json")));
+        assertThat(nodesByArtifactId(document, "slf4j-api")).hasSize(1);
+        assertThat(nodesByArtifactId(document, "junit-jupiter-api")).hasSize(1);
     }
 
     private static JsonNode onlyNodeByArtifactId(JsonNode document, String artifactId) {
