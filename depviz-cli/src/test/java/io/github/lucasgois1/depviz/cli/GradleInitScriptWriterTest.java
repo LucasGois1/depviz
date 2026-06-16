@@ -26,6 +26,9 @@ class GradleInitScriptWriterTest {
         assertThat(text).contains("outputDirectory.set(project.layout.projectDirectory.dir('custom'))");
         assertThat(text).contains("snyk.set('true')");
         assertThat(text).contains("snykJson.set(project.layout.projectDirectory.file('snyk.json'))");
+        assertThat(text).contains("snykOrg.set('org')");
+        assertThat(text).contains("snykAllProjects.set(true)");
+        assertThat(text).contains("snykCommand.set('/opt/bin/snyk')");
     }
 
     @Test

@@ -38,9 +38,9 @@ public abstract class DepvizOpenTask extends DefaultTask {
             extension.getOutputDirectory().get().getAsFile().toPath(),
             extension.getSnyk().get(),
             extension.getSnykJson().isPresent() ? extension.getSnykJson().get().getAsFile().toPath().toString() : null,
-            null,
-            null,
-            null
+            extension.getSnykCommand().get(),
+            extension.getSnykOrg().isPresent() ? extension.getSnykOrg().get() : null,
+            Boolean.toString(extension.getSnykAllProjects().get())
         );
         Project rootProject = project.getRootProject();
         DependencyNodeInput root = new GradleDependencyGraphExtractor().extractAggregate(rootProject, config.scope().value());

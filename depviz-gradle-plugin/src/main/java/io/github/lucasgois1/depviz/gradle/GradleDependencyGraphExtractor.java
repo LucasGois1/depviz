@@ -12,15 +12,17 @@ import org.gradle.api.artifacts.ResolvedDependency;
 
 final class GradleDependencyGraphExtractor {
     DependencyNodeInput extractAggregate(Project rootProject, String scope) {
-        List<DependencyNodeInput> projectRoots = rootProject.getAllprojects().stream()
-            .filter(project -> project != rootProject)
+        List<Project> javaProjects = rootProject.getAllprojects().stream()
             .filter(project -> project.getPlugins().hasPlugin("java"))
             .sorted(Comparator.comparing(Project::getPath))
-            .map(project -> withModuleScope(extract(project, scope)))
             .toList();
-        if (projectRoots.isEmpty()) {
+        boolean hasJavaSubprojects = javaProjects.stream().anyMatch(project -> project != rootProject);
+        if (!hasJavaSubprojects) {
             return extract(rootProject, scope);
         }
+        List<DependencyNodeInput> projectRoots = javaProjects.stream()
+            .map(project -> withModuleScope(extract(project, scope)))
+            .toList();
         return new DependencyNodeInput(
             new ArtifactCoordinate(
                 stringOrDefault(rootProject.getGroup(), "unknown"),

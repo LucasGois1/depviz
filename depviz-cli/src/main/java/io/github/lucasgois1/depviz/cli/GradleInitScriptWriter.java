@@ -38,6 +38,11 @@ public final class GradleInitScriptWriter {
         addString(script, "layout", options.layout());
         addString(script, "snyk", options.snyk());
         addFile(script, "snykJson", options.snykJson());
+        addString(script, "snykOrg", options.snykOrg());
+        if (options.snykAllProjects()) {
+            script.append("      depviz.snykAllProjects.set(true)\n");
+        }
+        addString(script, "snykCommand", options.snykCommand());
         script.append("""
                 }
               }

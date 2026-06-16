@@ -10,6 +10,8 @@ public abstract class DepvizExtension {
         getScope().convention("runtime");
         getOpen().convention(true);
         getSnyk().convention("auto");
+        getSnykCommand().convention("snyk");
+        getSnykAllProjects().convention(false);
         getLayout().convention("breadthfirst");
     }
 
@@ -18,6 +20,12 @@ public abstract class DepvizExtension {
     public abstract Property<Boolean> getOpen();
 
     public abstract Property<String> getSnyk();
+
+    public abstract Property<String> getSnykCommand();
+
+    public abstract Property<String> getSnykOrg();
+
+    public abstract Property<Boolean> getSnykAllProjects();
 
     public abstract Property<String> getLayout();
 

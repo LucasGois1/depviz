@@ -9,11 +9,15 @@ LIB_DIR="$INSTALL_DIR/lib"
 
 mkdir -p "$BIN_DIR" "$LIB_DIR"
 
+TMP_JAR="$LIB_DIR/depviz-cli.jar.tmp.$$"
+trap 'rm -f "$TMP_JAR"' EXIT HUP INT TERM
+
 if [ -n "${DEPVIZ_LOCAL_JAR:-}" ]; then
-  cp "$DEPVIZ_LOCAL_JAR" "$LIB_DIR/depviz-cli.jar"
+  cp "$DEPVIZ_LOCAL_JAR" "$TMP_JAR"
 else
-  curl -fsSL "$BASE_URL/depviz-cli.jar" -o "$LIB_DIR/depviz-cli.jar"
+  curl -fsSL "$BASE_URL/depviz-cli.jar" -o "$TMP_JAR"
 fi
+mv "$TMP_JAR" "$LIB_DIR/depviz-cli.jar"
 
 cat > "$BIN_DIR/depviz" <<'LAUNCHER'
 #!/bin/sh

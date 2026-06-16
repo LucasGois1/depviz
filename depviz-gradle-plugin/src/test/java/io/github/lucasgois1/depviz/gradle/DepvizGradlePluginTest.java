@@ -16,6 +16,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 class DepvizGradlePluginTest {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final String TEST_GRADLE_VERSION = "8.14.3";
 
     @TempDir
     Path projectDir;
@@ -31,6 +32,9 @@ class DepvizGradlePluginTest {
         assertThat(extension.getScope().get()).isEqualTo("runtime");
         assertThat(extension.getOpen().get()).isTrue();
         assertThat(extension.getSnyk().get()).isEqualTo("auto");
+        assertThat(extension.getSnykCommand().get()).isEqualTo("snyk");
+        assertThat(extension.getSnykOrg().isPresent()).isFalse();
+        assertThat(extension.getSnykAllProjects().get()).isFalse();
         assertThat(extension.getLayout().get()).isEqualTo("breadthfirst");
         assertThat(extension.getOutputDirectory().get().getAsFile()).isEqualTo(project.getLayout().getProjectDirectory().dir("custom-build/depviz").getAsFile());
         assertThat(extension.getSnykJson().isPresent()).isFalse();
@@ -41,7 +45,7 @@ class DepvizGradlePluginTest {
         Files.writeString(projectDir.resolve("settings.gradle.kts"), "rootProject.name = \"sample\"\n");
         Files.writeString(projectDir.resolve("build.gradle.kts"), "plugins { id(\"io.github.lucasgois1.depviz\") }\n");
 
-        var result = GradleRunner.create()
+        var result = gradleRunner()
             .withProjectDir(projectDir.toFile())
             .withPluginClasspath()
             .withArguments("tasks", "--all")
@@ -78,7 +82,7 @@ class DepvizGradlePluginTest {
             }
             """);
 
-        var result = GradleRunner.create()
+        var result = gradleRunner()
             .withProjectDir(projectDir.toFile())
             .withPluginClasspath()
             .withArguments("depvizOpen", "--stacktrace")
@@ -122,7 +126,7 @@ class DepvizGradlePluginTest {
         Files.writeString(projectDir.resolve("api/build.gradle.kts"), "");
         Files.writeString(projectDir.resolve("worker/build.gradle.kts"), "");
 
-        var result = GradleRunner.create()
+        var result = gradleRunner()
             .withProjectDir(projectDir.toFile())
             .withPluginClasspath()
             .withArguments("depvizOpen", "--stacktrace")
@@ -153,6 +157,57 @@ class DepvizGradlePluginTest {
     }
 
     @Test
+    void aggregateIncludesRootJavaProjectWhenSubprojectsExist() throws Exception {
+        Files.writeString(projectDir.resolve("settings.gradle.kts"), """
+            rootProject.name = "gradle-platform"
+            include("worker")
+            """);
+        Files.createDirectories(projectDir.resolve("worker"));
+        Files.writeString(projectDir.resolve("build.gradle.kts"), """
+            plugins {
+                java
+                id("io.github.lucasgois1.depviz")
+            }
+            group = "com.acme"
+            version = "1.0.0"
+            repositories { mavenCentral() }
+            dependencies {
+                runtimeOnly("org.slf4j:slf4j-api:2.0.13")
+            }
+            subprojects {
+                apply(plugin = "java")
+                group = "com.acme"
+                version = "1.0.0"
+                repositories { mavenCentral() }
+                dependencies {
+                    "runtimeOnly"("org.slf4j:slf4j-api:2.0.13")
+                }
+            }
+            depviz {
+                open.set(false)
+                snyk.set("false")
+            }
+            """);
+        Files.writeString(projectDir.resolve("worker/build.gradle.kts"), "");
+
+        gradleRunner()
+            .withProjectDir(projectDir.toFile())
+            .withPluginClasspath()
+            .withArguments("depvizOpen", "--stacktrace")
+            .build();
+
+        JsonNode document = OBJECT_MAPPER.readTree(Files.readString(projectDir.resolve("build/depviz/dependency-graph.json")));
+        JsonNode platformModule = onlyNodeByArtifactId(document, "gradle-platform");
+        JsonNode workerModule = onlyNodeByArtifactId(document, "worker");
+        JsonNode sharedDependency = onlyNodeByArtifactId(document, "slf4j-api");
+
+        assertThat(platformModule.path("moduleRoot").asBoolean()).isTrue();
+        assertThat(workerModule.path("moduleRoot").asBoolean()).isTrue();
+        assertThat(incomingSources(document, sharedDependency.path("id").asText()))
+            .containsExactlyInAnyOrder(platformModule.path("id").asText(), workerModule.path("id").asText());
+    }
+
+    @Test
     void compileScopeUsesCompileClasspath() throws Exception {
         Files.writeString(projectDir.resolve("settings.gradle.kts"), "rootProject.name = \"scope-sample\"\n");
         Files.writeString(projectDir.resolve("build.gradle.kts"), """
@@ -172,7 +227,7 @@ class DepvizGradlePluginTest {
             }
             """);
 
-        GradleRunner.create()
+        gradleRunner()
             .withProjectDir(projectDir.toFile())
             .withPluginClasspath()
             .withArguments("depvizOpen", "--stacktrace")
@@ -199,7 +254,7 @@ class DepvizGradlePluginTest {
             }
             """);
 
-        GradleRunner.create()
+        gradleRunner()
             .withProjectDir(projectDir.toFile())
             .withPluginClasspath()
             .withArguments("depvizOpen", "--stacktrace")
@@ -228,7 +283,7 @@ class DepvizGradlePluginTest {
             }
             """);
 
-        GradleRunner.create()
+        gradleRunner()
             .withProjectDir(projectDir.toFile())
             .withPluginClasspath()
             .withArguments("depvizOpen", "--stacktrace")
@@ -277,7 +332,7 @@ class DepvizGradlePluginTest {
             }
             """);
 
-        GradleRunner.create()
+        gradleRunner()
             .withProjectDir(projectDir.toFile())
             .withPluginClasspath()
             .withArguments("depvizOpen", "--stacktrace")
@@ -297,6 +352,51 @@ class DepvizGradlePluginTest {
         assertThat(findings.get(0).path("id").asText()).isEqualTo("SNYK-JAVA-ORGSLF4J-TEST-1");
     }
 
+    @Test
+    void forwardsSnykCommandOrgAndAllProjectsToGradleScan() throws Exception {
+        Files.writeString(projectDir.resolve("settings.gradle.kts"), "rootProject.name = \"snyk-command-gradle\"\n");
+        Path argsFile = projectDir.resolve("snyk-args.txt");
+        Path snykScript = projectDir.resolve("fake-snyk");
+        Files.writeString(snykScript, """
+            #!/bin/sh
+            printf '%s\n' "$@" > snyk-args.txt
+            for arg in "$@"; do
+              case "$arg" in
+                --json-file-output=*) output="${arg#--json-file-output=}" ;;
+              esac
+            done
+            printf '{"vulnerabilities":[]}' > "$output"
+            """);
+        assertThat(snykScript.toFile().setExecutable(true)).isTrue();
+        Files.writeString(projectDir.resolve("build.gradle.kts"), """
+            plugins {
+                java
+                id("io.github.lucasgois1.depviz")
+            }
+            repositories { mavenCentral() }
+            dependencies { runtimeOnly("org.slf4j:slf4j-api:2.0.13") }
+            depviz {
+                open.set(false)
+                snyk.set("true")
+                snykCommand.set("./fake-snyk")
+                snykOrg.set("engineering")
+                snykAllProjects.set(true)
+            }
+            """);
+
+        gradleRunner()
+            .withProjectDir(projectDir.toFile())
+            .withPluginClasspath()
+            .withArguments("depvizOpen", "--stacktrace")
+            .build();
+
+        assertThat(Files.readString(argsFile))
+            .contains("test")
+            .contains("--org=engineering")
+            .contains("--all-projects")
+            .contains("--json-file-output=");
+    }
+
     private static JsonNode rootNode(JsonNode document) {
         List<JsonNode> matches = new ArrayList<>();
         for (JsonNode node : document.path("nodes")) {
@@ -306,6 +406,10 @@ class DepvizGradlePluginTest {
         }
         assertThat(matches).hasSize(1);
         return matches.get(0);
+    }
+
+    private static GradleRunner gradleRunner() {
+        return GradleRunner.create().withGradleVersion(TEST_GRADLE_VERSION);
     }
 
     private static JsonNode onlyNodeByArtifactId(JsonNode document, String artifactId) {
