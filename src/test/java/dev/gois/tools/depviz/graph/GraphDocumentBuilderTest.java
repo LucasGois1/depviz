@@ -4,10 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 import dev.gois.tools.depviz.config.DepvizConfig;
+import dev.gois.tools.depviz.security.SecurityFinding;
+import dev.gois.tools.depviz.security.SecurityInsight;
+import dev.gois.tools.depviz.security.SecuritySeverity;
+import dev.gois.tools.depviz.security.SecuritySummary;
 import dev.gois.tools.depviz.version.VersionCheckResult;
 import dev.gois.tools.depviz.version.VersionInsight;
 import dev.gois.tools.depviz.version.VersionSummary;
 import java.nio.file.Path;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +45,55 @@ class GraphDocumentBuilderTest {
         assertThat(document.nodes())
             .extracting(GraphNode::versionInsight)
             .containsExactly((VersionInsight) null);
+    }
+
+    @Test
+    void graphDocumentAcceptsOptionalSecuritySummaryAndInsight() {
+        SecurityFinding finding = new SecurityFinding(
+            "SNYK-JAVA-DEMO-1",
+            SecuritySeverity.HIGH,
+            "Demo vulnerability",
+            "org.example:lib",
+            "1.0.0",
+            List.of("1.0.1"),
+            "https://security.snyk.io/vuln/SNYK-JAVA-DEMO-1"
+        );
+        SecurityInsight insight = SecurityInsight.vulnerable(List.of(finding));
+        GraphNode node = new GraphNode(
+            "org.example:lib:jar::1.0.0",
+            "org.example",
+            "lib",
+            "1.0.0",
+            "jar",
+            "",
+            "compile",
+            false,
+            1,
+            false,
+            false,
+            "org.example:lib",
+            "org.example:lib:jar:1.0.0",
+            "org.example",
+            null,
+            insight
+        );
+
+        GraphDocument document = new GraphDocument(
+            GraphDocumentBuilder.SCHEMA_VERSION,
+            Instant.EPOCH,
+            projectInfo(),
+            new GraphSummary(1, 0, Map.of("compile", 1), Map.of("org.example", 1)),
+            new ViewerConfig("breadthfirst", 500, "artifact"),
+            List.of(node),
+            List.of(),
+            List.of(),
+            VersionSummary.disabled(),
+            new SecuritySummary(true, "snyk", true, 1, 0, 0, 1, 0, 0, 0),
+            List.of()
+        );
+
+        assertThat(document.securitySummary().high()).isEqualTo(1);
+        assertThat(document.nodes().get(0).securityInsight().maxSeverity()).isEqualTo(SecuritySeverity.HIGH);
     }
 
     @Test

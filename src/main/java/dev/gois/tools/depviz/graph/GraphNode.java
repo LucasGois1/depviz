@@ -1,5 +1,6 @@
 package dev.gois.tools.depviz.graph;
 
+import dev.gois.tools.depviz.security.SecurityInsight;
 import dev.gois.tools.depviz.version.VersionInsight;
 
 public record GraphNode(
@@ -17,6 +18,7 @@ public record GraphNode(
     String label,
     String coordinate,
     String groupColorKey,
-    VersionInsight versionInsight
+    VersionInsight versionInsight,
+    SecurityInsight securityInsight
 ) {
 }

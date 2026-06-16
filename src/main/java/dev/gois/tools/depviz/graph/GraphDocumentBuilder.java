@@ -47,6 +47,7 @@ public class GraphDocumentBuilder {
             edges,
             state.paths,
             versionCheck.summary(),
+            null,
             state.diagnostics
         );
     }
@@ -133,7 +134,8 @@ public class GraphDocumentBuilder {
             Coordinates.label(coordinate),
             Coordinates.displayCoordinate(coordinate),
             coordinate.groupId(),
-            versionCheck.insightsByNodeId().get(id)
+            versionCheck.insightsByNodeId().get(id),
+            null
         );
     }
 

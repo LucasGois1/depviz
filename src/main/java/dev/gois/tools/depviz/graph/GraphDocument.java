@@ -1,5 +1,6 @@
 package dev.gois.tools.depviz.graph;
 
+import dev.gois.tools.depviz.security.SecuritySummary;
 import dev.gois.tools.depviz.version.VersionSummary;
 import java.time.Instant;
 import java.util.List;
@@ -15,6 +16,7 @@ public record GraphDocument(
     List<GraphEdge> edges,
     List<GraphPath> paths,
     VersionSummary versionSummary,
+    SecuritySummary securitySummary,
     List<DiagnosticEntry> diagnostics
 ) {
     public GraphDocument {
