@@ -12,7 +12,8 @@ public final class GradleInitScriptWriter {
     }
 
     public Path write(Path directory, CliOptions options) throws IOException {
-        Path script = Files.createTempFile(directory, "depviz-", ".gradle");
+        Path script = Files.createTempFile("depviz-", ".gradle");
+        script.toFile().deleteOnExit();
         Files.writeString(script, scriptText(options));
         return script;
     }

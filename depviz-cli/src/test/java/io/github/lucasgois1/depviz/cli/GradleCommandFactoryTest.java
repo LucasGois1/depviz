@@ -12,7 +12,7 @@ class GradleCommandFactoryTest {
             "gradle",
             "--init-script",
             "/tmp/depviz.gradle",
-            "depvizOpen"
+            ":depvizOpen"
         );
     }
 }
