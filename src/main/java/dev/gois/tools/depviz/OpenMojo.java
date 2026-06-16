@@ -6,6 +6,7 @@ import dev.gois.tools.depviz.graph.GraphDocument;
 import dev.gois.tools.depviz.graph.GraphDocumentBuilder;
 import dev.gois.tools.depviz.graph.MavenDependencyGraphExtractor;
 import dev.gois.tools.depviz.graph.ProjectInfo;
+import dev.gois.tools.depviz.graph.ReactorDependencyGraphExtractor;
 import dev.gois.tools.depviz.output.BrowserOpener;
 import dev.gois.tools.depviz.output.OutputFiles;
 import dev.gois.tools.depviz.output.ViewerWriter;
@@ -27,10 +28,13 @@ import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.project.MavenProject;
 import org.apache.maven.shared.dependency.graph.DependencyCollectorBuilder;
 
-@Mojo(name = "open", requiresProject = true, threadSafe = true)
+@Mojo(name = "open", requiresProject = true, threadSafe = true, aggregator = true)
 public final class OpenMojo extends AbstractMojo {
     @Parameter(defaultValue = "${project}", readonly = true, required = true)
     private MavenProject project;
+
+    @Parameter(defaultValue = "${reactorProjects}", readonly = true, required = true)
+    private List<MavenProject> reactorProjects;
 
     @Component
     private DependencyCollectorBuilder dependencyCollectorBuilder;
@@ -71,10 +75,27 @@ public final class OpenMojo extends AbstractMojo {
     @Parameter(property = "depviz.outputDirectory", defaultValue = "${project.build.directory}/depviz")
     private File outputDirectory;
 
+    @Parameter(property = "depviz.snyk")
+    private String snyk;
+
+    @Parameter(property = "depviz.snykJson")
+    private String snykJson;
+
+    @Parameter(property = "depviz.snykCommand")
+    private String snykCommand;
+
+    @Parameter(property = "depviz.snykOrg")
+    private String snykOrg;
+
+    @Parameter(property = "depviz.snykAllProjects")
+    private String snykAllProjects;
+
     @Override
     public void execute() throws MojoExecutionException {
         DepvizConfig config = parseConfig();
-        ExtractedDependencyNode root = new MavenDependencyGraphExtractor(dependencyCollectorBuilder).extract(project, config);
+        ExtractedDependencyNode root = new ReactorDependencyGraphExtractor(
+            new MavenDependencyGraphExtractor(dependencyCollectorBuilder)
+        ).extract(project, reactorProjects, config);
         VersionCheckResult versionCheck = checkVersions(root, config);
         GraphDocument document = new GraphDocumentBuilder().build(root, projectInfo(), config, versionCheck);
         OutputFiles outputFiles = write(document, config);
@@ -101,7 +122,12 @@ public final class OpenMojo extends AbstractMojo {
                 maxInitialLabels,
                 excludes,
                 checkUpdates,
-                outputDirectory == null ? null : outputDirectory.toPath()
+                outputDirectory == null ? null : outputDirectory.toPath(),
+                snyk,
+                snykJson,
+                snykCommand,
+                snykOrg,
+                snykAllProjects
             );
         } catch (IllegalArgumentException exception) {
             throw new MojoExecutionException(exception.getMessage(), exception);
