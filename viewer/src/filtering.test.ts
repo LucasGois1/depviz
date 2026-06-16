@@ -259,11 +259,53 @@ describe("buildVisibility", () => {
     );
   });
 
+  it("does not use vulnerable module aggregates as security matching seeds", () => {
+    const filters = { ...createFilterState(), securityMode: "vulnerable" as const };
+    const visibility = buildVisibility(aggregateSecurityDocument, filters);
+
+    expect(visibility.matchingNodeIds).toEqual(new Set(["org.shared:shared-lib:jar::2.0.0"]));
+    expect([...visibility.visibleNodeIds].sort()).toEqual(
+      [
+        "com.acme:api:jar::1.0.0",
+        "com.acme:platform-reactor:reactor::1.0.0",
+        "org.shared:shared-lib:jar::2.0.0"
+      ].sort()
+    );
+    expect(visibility.visibleNodeIds).not.toContain("org.safe:base-lib:jar::1.0.0");
+  });
+
+  it("keeps module roots as context when filtering to optional vulnerable dependencies", () => {
+    const filters = { ...createFilterState(), optionalMode: "optional" as const, securityMode: "vulnerable" as const };
+    const visibility = buildVisibility(optionalSecurityDocument, filters);
+
+    expect(visibility.matchingNodeIds).toEqual(new Set(["org.shared:shared-lib:jar::2.0.0"]));
+    expect([...visibility.visibleNodeIds].sort()).toEqual(
+      [
+        "com.acme:api:jar::1.0.0",
+        "com.acme:platform-reactor:reactor::1.0.0",
+        "org.shared:shared-lib:jar::2.0.0"
+      ].sort()
+    );
+  });
+
   it("does not apply security filtering when security summary is absent", () => {
     const { securitySummary, ...documentWithoutSecurity } = securityDocument;
     const filters = { ...createFilterState(), securityMode: "high" as const };
 
     expect(buildVisibility(documentWithoutSecurity, filters).visibleNodeIds.size).toBe(documentWithoutSecurity.nodes.length);
+  });
+
+  it("does not apply security filtering when security summary is unchecked", () => {
+    const uncheckedSecurityDocument: DepvizDocument = {
+      ...securityDocument,
+      securitySummary: {
+        ...securityDocument.securitySummary!,
+        checked: false
+      }
+    };
+    const filters = { ...createFilterState(), securityMode: "high" as const };
+
+    expect(buildVisibility(uncheckedSecurityDocument, filters).visibleNodeIds.size).toBe(uncheckedSecurityDocument.nodes.length);
   });
 });
 
@@ -396,6 +438,47 @@ const securityDocument: DepvizDocument = {
   ]
 };
 
+const aggregateSecurityDocument: DepvizDocument = {
+  ...securityDocument,
+  nodes: [
+    securityNode(
+      "com.acme:platform-reactor:reactor::1.0.0",
+      "com.acme",
+      "platform-reactor",
+      "reactor",
+      "root",
+      false,
+      true
+    ),
+    securityNode("com.acme:api:jar::1.0.0", "com.acme", "api", "jar", "module", true, false, true),
+    securityNode("org.safe:base-lib:jar::1.0.0", "org.safe", "base-lib", "jar", "compile", false),
+    securityNode("org.shared:shared-lib:jar::2.0.0", "org.shared", "shared-lib", "jar", "compile", true)
+  ]
+};
+
+const optionalSecurityDocument: DepvizDocument = {
+  ...securityDocument,
+  nodes: [
+    securityNode(
+      "com.acme:platform-reactor:reactor::1.0.0",
+      "com.acme",
+      "platform-reactor",
+      "reactor",
+      "root",
+      false,
+      true
+    ),
+    securityNode("com.acme:api:jar::1.0.0", "com.acme", "api", "jar", "module", false, false, true),
+    securityNode("org.safe:base-lib:jar::1.0.0", "org.safe", "base-lib", "jar", "compile", false),
+    securityNode("org.shared:shared-lib:jar::2.0.0", "org.shared", "shared-lib", "jar", "compile", true, false, false, true)
+  ],
+  edges: [
+    edge("reactor-api", "com.acme:platform-reactor:reactor::1.0.0", "com.acme:api:jar::1.0.0", "module", false),
+    edge("api-safe", "com.acme:api:jar::1.0.0", "org.safe:base-lib:jar::1.0.0", "compile", false),
+    edge("api-shared", "com.acme:api:jar::1.0.0", "org.shared:shared-lib:jar::2.0.0", "compile", true)
+  ]
+};
+
 function versionNode(
   id: string,
   groupId: string,
@@ -426,10 +509,11 @@ function securityNode(
   scope: string,
   vulnerable: boolean,
   root = false,
-  moduleRoot = false
+  moduleRoot = false,
+  optional = false
 ): GraphNode {
   return {
-    ...node(id, groupId, artifactId, root ? "1.0.0" : id.split("::")[1], scope, false, root),
+    ...node(id, groupId, artifactId, root ? "1.0.0" : id.split("::")[1], scope, optional, root),
     type,
     moduleRoot,
     securityInsight: vulnerable

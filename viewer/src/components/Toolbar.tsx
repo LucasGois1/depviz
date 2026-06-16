@@ -103,11 +103,11 @@ export function Toolbar({
         {document.securitySummary?.checked ? (
           <Select value={filters.securityMode} onValueChange={(value) => onSecurityModeChange(value as SecurityFilterMode)} label="Security filter">
             <SelectItem value="all">All security</SelectItem>
-            <SelectItem value="vulnerable">Vulnerable ({document.securitySummary.vulnerableNodes})</SelectItem>
-            <SelectItem value="critical">Critical ({document.securitySummary.critical})</SelectItem>
-            <SelectItem value="high">High ({document.securitySummary.high})</SelectItem>
-            <SelectItem value="medium">Medium ({document.securitySummary.medium})</SelectItem>
-            <SelectItem value="low">Low ({document.securitySummary.low})</SelectItem>
+            <SelectItem value="vulnerable">Vulnerable</SelectItem>
+            <SelectItem value="critical">Critical</SelectItem>
+            <SelectItem value="high">High</SelectItem>
+            <SelectItem value="medium">Medium</SelectItem>
+            <SelectItem value="low">Low</SelectItem>
           </Select>
         ) : null}
 

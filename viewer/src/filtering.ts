@@ -25,7 +25,7 @@ export function buildVisibility(document: DepvizDocument, filters: FilterState):
   const nodeById = new Map(document.nodes.map((node) => [node.id, node]));
   const adjacency = buildAdjacency(document);
   const baseAllowed = new Set(
-    document.nodes.filter((node) => node.root || nodePassesOptionalFilter(node, filters)).map((node) => node.id)
+    document.nodes.filter((node) => nodeIsStructuralContext(node) || nodePassesOptionalFilter(node, filters)).map((node) => node.id)
   );
   const reachable = reachableFromRoots(document, filters, baseAllowed, nodeById);
   const updateFilteringEnabled = document.versionSummary?.enabled === true && filters.updateMode !== "all";
@@ -88,6 +88,10 @@ function nodePassesOptionalFilter(node: GraphNode, filters: FilterState): boolea
   return true;
 }
 
+function nodeIsStructuralContext(node: GraphNode): boolean {
+  return node.root || node.moduleRoot;
+}
+
 function edgePassesFilters(edge: GraphEdge, filters: FilterState): boolean {
   if (edge.scope === "root" || edge.scope === "module") {
     return true;
@@ -133,6 +137,9 @@ export function nodeMatchesSecurityMode(node: GraphNode, securityMode: SecurityF
   if (securityMode === "all") {
     return true;
   }
+  if (nodeIsStructuralContext(node)) {
+    return false;
+  }
   const insight = node.securityInsight;
   if (!insight || insight.status !== "vulnerable") {
     return false;
@@ -167,9 +174,8 @@ function reachableFromRoots(
       const targetNode = nodeById.get(edge.target);
       if (
         !edgePassesFilters(edge, filters) ||
-        !baseAllowed.has(edge.target) ||
         !targetNode ||
-        !nodePassesOptionalFilter(targetNode, filters)
+        !baseAllowed.has(edge.target)
       ) {
         continue;
       }
