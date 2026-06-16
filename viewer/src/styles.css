@@ -792,6 +792,20 @@ svg {
   gap: 6px;
 }
 
+.security-finding-link {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 8px;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 720;
+  text-decoration: none;
+}
+
+.security-finding-link:hover {
+  text-decoration: underline;
+}
+
 .neighbor-section h3 {
   margin: 0 0 8px;
   font-size: 12px;

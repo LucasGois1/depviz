@@ -69,6 +69,8 @@ describe("DetailsPanel", () => {
     expect(html).toContain("org.example:example-lib");
     expect(html).toContain("Fixed versions");
     expect(html).toContain("1.0.1, 1.1.0");
+    expect(html).toContain("href=\"https://security.example/SNYK-JAVA-EXAMPLELIB-123\"");
+    expect(html).toContain("Advisory");
   });
 });
 

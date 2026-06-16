@@ -177,6 +177,11 @@ function SecurityFindingCard({ finding }: { finding: SecurityFinding }) {
         <Property label="Version" value={finding.version} />
         <Property label="Fixed versions" value={finding.fixedVersions.length > 0 ? finding.fixedVersions.join(", ") : "-"} />
       </div>
+      {finding.url ? (
+        <a className="security-finding-link" href={finding.url} target="_blank" rel="noreferrer">
+          Advisory
+        </a>
+      ) : null}
     </article>
   );
 }
