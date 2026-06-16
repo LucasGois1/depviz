@@ -65,6 +65,7 @@ class DepvizGradlePluginTest {
 
             depviz {
                 open.set(false)
+                scope.set(" Runtime ")
             }
             """);
 
@@ -77,7 +78,9 @@ class DepvizGradlePluginTest {
         Path json = projectDir.resolve("build/depviz/dependency-graph.json");
         assertThat(result.task(":depvizOpen").getOutcome()).isEqualTo(TaskOutcome.SUCCESS);
         assertThat(json).exists();
-        assertThat(Files.readString(json)).contains("\"artifactId\" : \"gradle-sample\"");
-        assertThat(Files.readString(json)).contains("\"artifactId\" : \"slf4j-api\"");
+        String graphJson = Files.readString(json);
+        assertThat(graphJson).contains("\"artifactId\" : \"gradle-sample\"");
+        assertThat(graphJson).contains("\"artifactId\" : \"slf4j-api\"");
+        assertThat(result.getOutput()).contains("Open this URI manually:");
     }
 }
