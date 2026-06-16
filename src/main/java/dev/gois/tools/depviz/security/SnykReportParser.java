@@ -1,24 +1,35 @@
 package dev.gois.tools.depviz.security;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.gois.tools.depviz.graph.DiagnosticEntry;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public final class SnykReportParser {
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
+
+    public SnykReportParser() {
+        this(new ObjectMapper());
+    }
+
+    SnykReportParser(ObjectMapper objectMapper) {
+        this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
+    }
 
     public SecurityCheckResult parse(String json) {
+        JsonNode root;
         try {
-            JsonNode root = objectMapper.readTree(json);
-            List<SecurityFinding> findings = new ArrayList<>();
-            collectFindings(root, findings);
-            return SecurityCheckResult.checked(findings, List.of());
-        } catch (Exception exception) {
+            root = objectMapper.readTree(json);
+        } catch (JsonProcessingException | IllegalArgumentException exception) {
             String message = exception.getMessage() == null ? exception.getClass().getSimpleName() : exception.getMessage();
             return new SecurityCheckResult(true, false, List.of(), List.of(new DiagnosticEntry("warning", "snyk-json-invalid", message, null)));
         }
+        List<SecurityFinding> findings = new ArrayList<>();
+        collectFindings(root, findings);
+        return SecurityCheckResult.checked(findings, List.of());
     }
 
     private static void collectFindings(JsonNode node, List<SecurityFinding> findings) {
