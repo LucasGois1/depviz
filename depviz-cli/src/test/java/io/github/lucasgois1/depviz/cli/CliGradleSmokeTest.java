@@ -5,11 +5,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.File;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -18,6 +21,26 @@ class CliGradleSmokeTest {
 
     @TempDir
     Path projectDir;
+
+    @AfterEach
+    void stopGradleBeforeTempDirCleanup() throws Exception {
+        Path gradleUserHome = projectDir.resolve("gradle-user-home");
+        if (!Files.isDirectory(gradleUserHome)) {
+            return;
+        }
+        runNestedBuild(
+            "Nested Gradle stop failed",
+            List.of(
+                repoRoot().resolve("gradlew").toAbsolutePath().normalize().toString(),
+                "--gradle-user-home",
+                gradleUserHome.toAbsolutePath().normalize().toString(),
+                "--stop"
+            ),
+            repoRoot(),
+            supportedGradleJavaHome()
+        );
+        deleteRecursivelyWithRetry(gradleUserHome);
+    }
 
     @Test
     void cliRunsGradlePluginWithoutEditingBuildFiles() throws Exception {
@@ -68,6 +91,7 @@ class CliGradleSmokeTest {
             + shellQuote(gradleUserHome.toAbsolutePath().normalize().toString())
             + "\nexec "
             + shellQuote(repoGradlew.toString())
+            + " --no-daemon"
             + " --gradle-user-home "
             + shellQuote(gradleUserHome.toAbsolutePath().normalize().toString())
             + " "
@@ -151,6 +175,31 @@ class CliGradleSmokeTest {
 
     private static String shellQuote(String value) {
         return "'" + value.replace("'", "'\\''") + "'";
+    }
+
+    private static void deleteRecursivelyWithRetry(Path directory) throws Exception {
+        IOException lastException = null;
+        for (int attempt = 0; attempt < 5; attempt++) {
+            try {
+                deleteRecursively(directory);
+                return;
+            } catch (IOException exception) {
+                lastException = exception;
+                Thread.sleep(200);
+            }
+        }
+        throw lastException;
+    }
+
+    private static void deleteRecursively(Path directory) throws IOException {
+        if (!Files.exists(directory)) {
+            return;
+        }
+        try (var stream = Files.walk(directory)) {
+            for (Path path : stream.sorted(Comparator.reverseOrder()).toList()) {
+                Files.deleteIfExists(path);
+            }
+        }
     }
 
     private static Path supportedGradleJavaHome() {
