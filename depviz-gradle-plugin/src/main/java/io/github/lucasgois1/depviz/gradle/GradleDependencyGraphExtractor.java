@@ -2,6 +2,7 @@ package io.github.lucasgois1.depviz.gradle;
 
 import io.github.lucasgois1.depviz.graph.ArtifactCoordinate;
 import io.github.lucasgois1.depviz.graph.DependencyNodeInput;
+import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -10,6 +11,32 @@ import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.ResolvedDependency;
 
 final class GradleDependencyGraphExtractor {
+    DependencyNodeInput extractAggregate(Project rootProject, String scope) {
+        List<DependencyNodeInput> projectRoots = rootProject.getAllprojects().stream()
+            .filter(project -> project != rootProject)
+            .filter(project -> project.getPlugins().hasPlugin("java"))
+            .sorted(Comparator.comparing(Project::getPath))
+            .map(project -> withModuleScope(extract(project, scope)))
+            .toList();
+        if (projectRoots.isEmpty()) {
+            return extract(rootProject, scope);
+        }
+        return new DependencyNodeInput(
+            new ArtifactCoordinate(
+                stringOrDefault(rootProject.getGroup(), "unknown"),
+                rootProject.getName() + "-reactor",
+                "reactor",
+                "",
+                stringOrDefault(rootProject.getVersion(), "unspecified")
+            ),
+            "root",
+            false,
+            false,
+            projectRoots,
+            List.of()
+        );
+    }
+
     DependencyNodeInput extract(Project project, String scope) {
         Configuration configuration = configuration(project, scope);
         Set<DependencyNodeInput> children = new LinkedHashSet<>();
@@ -29,6 +56,17 @@ final class GradleDependencyGraphExtractor {
             false,
             List.copyOf(children),
             List.of()
+        );
+    }
+
+    private static DependencyNodeInput withModuleScope(DependencyNodeInput node) {
+        return new DependencyNodeInput(
+            node.coordinate(),
+            "module",
+            false,
+            true,
+            node.children(),
+            node.diagnostics()
         );
     }
 

@@ -11,6 +11,7 @@ import io.github.lucasgois1.depviz.output.ViewerWriter;
 import io.github.lucasgois1.depviz.version.VersionCheckResult;
 import java.io.IOException;
 import java.net.URI;
+import java.util.Comparator;
 import java.util.List;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.GradleException;
@@ -38,16 +39,21 @@ public abstract class DepvizOpenTask extends DefaultTask {
             null,
             null
         );
-        DependencyNodeInput root = new GradleDependencyGraphExtractor().extract(project, config.scope().value());
+        Project rootProject = project.getRootProject();
+        DependencyNodeInput root = new GradleDependencyGraphExtractor().extractAggregate(rootProject, config.scope().value());
+        List<String> modules = rootProject.getSubprojects().stream()
+            .sorted(Comparator.comparing(Project::getPath))
+            .map(Project::getPath)
+            .toList();
         ProjectInfo projectInfo = new ProjectInfo(
             root.coordinate().groupId(),
             root.coordinate().artifactId(),
             root.coordinate().version(),
             "gradle",
-            project.getName(),
-            project.getProjectDir().toPath().toAbsolutePath().normalize().toString(),
-            false,
-            List.of()
+            rootProject.getName(),
+            rootProject.getProjectDir().toPath().toAbsolutePath().normalize().toString(),
+            !modules.isEmpty(),
+            modules
         );
         GraphDocument document = new GraphDocumentBuilder().build(root, projectInfo, config, VersionCheckResult.disabled());
         try {
