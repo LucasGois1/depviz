@@ -1,4 +1,7 @@
 target/
+build/
+.gradle/
+**/build/
 .superpowers/
 node_modules/
 viewer/node_modules/
