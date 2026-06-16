@@ -7,6 +7,16 @@ import org.junit.jupiter.api.Test;
 
 class MavenCommandFactoryTest {
     @Test
+    void omitsDefaultParserProperties() {
+        CliOptions options = CliOptions.parse(new String[] {"open"}, Path.of("/repo"));
+
+        assertThat(new MavenCommandFactory("0.1.0-SNAPSHOT").command(options, "mvn")).containsExactly(
+            "mvn",
+            "io.github.lucasgois1.depviz:depviz-maven-plugin:0.1.0-SNAPSHOT:open"
+        );
+    }
+
+    @Test
     void buildsFullCoordinateMavenCommandWithDepvizProperties() {
         CliOptions options = new CliOptions(
             Path.of("/repo"),

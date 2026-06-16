@@ -14,24 +14,30 @@ public final class MavenCommandFactory {
         List<String> command = new ArrayList<>();
         command.add(executable);
         command.add("io.github.lucasgois1.depviz:depviz-maven-plugin:" + version + ":open");
-        add(command, "depviz.scope", options.scope());
+        addUnlessDefault(command, "depviz.scope", options.scope(), "runtime");
         if (options.open() != null) {
             add(command, "depviz.open", options.open().toString());
         }
         add(command, "depviz.outputDirectory", options.output());
         add(command, "depviz.layout", options.layout());
-        add(command, "depviz.snyk", options.snyk());
+        addUnlessDefault(command, "depviz.snyk", options.snyk(), "auto");
         add(command, "depviz.snykJson", options.snykJson());
         add(command, "depviz.snykOrg", options.snykOrg());
         if (options.snykAllProjects()) {
             add(command, "depviz.snykAllProjects", "true");
         }
         add(command, "depviz.snykCommand", options.snykCommand());
-        return command;
+        return List.copyOf(command);
     }
 
     private static void add(List<String> command, String key, String value) {
         if (value != null && !value.isBlank()) {
+            command.add("-D" + key + "=" + value);
+        }
+    }
+
+    private static void addUnlessDefault(List<String> command, String key, String value, String defaultValue) {
+        if (value != null && !value.isBlank() && !defaultValue.equals(value)) {
             command.add("-D" + key + "=" + value);
         }
     }
