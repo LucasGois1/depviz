@@ -1,8 +1,8 @@
 import { useCallback, useMemo, useState } from "react";
 import { AlertTriangle } from "lucide-react";
-import { buildVisibility, createFilterState, setOptionalMode, setScopeEnabled, setUpdateMode, toggleCollapsed } from "./filtering";
+import { buildVisibility, createFilterState, setOptionalMode, setScopeEnabled, setSecurityMode, setUpdateMode, toggleCollapsed } from "./filtering";
 import { availableScopes, buildAdjacency, recommendedInitialLayout, shouldShowAllLabelsInitially } from "./graph";
-import type { DepvizDocument, FilterState, GraphNode, LayoutName, OptionalMode, UpdateFilterMode } from "./types";
+import type { DepvizDocument, FilterState, GraphNode, LayoutName, OptionalMode, SecurityFilterMode, UpdateFilterMode } from "./types";
 import { GraphCanvas } from "./components/GraphCanvas";
 import { Sidebar } from "./components/Sidebar";
 import { Toolbar } from "./components/Toolbar";
@@ -76,6 +76,10 @@ export default function App() {
     setFilters((current) => setUpdateMode(current, updateMode));
   }, []);
 
+  const updateSecurityMode = useCallback((securityMode: SecurityFilterMode) => {
+    setFilters((current) => setSecurityMode(current, securityMode));
+  }, []);
+
   const clearFilters = useCallback(() => {
     setFilters(createFilterState());
   }, []);
@@ -100,6 +104,7 @@ export default function App() {
           onScopeChange={updateScope}
           onOptionalModeChange={updateOptionalMode}
           onUpdateModeChange={updateUpdateMode}
+          onSecurityModeChange={updateSecurityMode}
           onLayoutChange={setLayout}
           onShowLabelsChange={setShowLabels}
           onFit={fitGraph}

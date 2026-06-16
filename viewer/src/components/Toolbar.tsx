@@ -1,6 +1,6 @@
 import { Circle, Crosshair, Eye, EyeOff, FilterX, GitBranch, Maximize2, Network, RotateCcw, Search } from "lucide-react";
 import { layoutDisplayName } from "../graph";
-import type { DepvizDocument, FilterState, LayoutName, OptionalMode, UpdateFilterMode, VersionSummary } from "../types";
+import type { DepvizDocument, FilterState, LayoutName, OptionalMode, SecurityFilterMode, UpdateFilterMode, VersionSummary } from "../types";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Select, SelectItem } from "./ui/select";
@@ -16,6 +16,7 @@ interface ToolbarProps {
   onScopeChange: (scope: string, enabled: boolean) => void;
   onOptionalModeChange: (mode: OptionalMode) => void;
   onUpdateModeChange: (mode: UpdateFilterMode) => void;
+  onSecurityModeChange: (mode: SecurityFilterMode) => void;
   onLayoutChange: (layout: LayoutName) => void;
   onShowLabelsChange: (showLabels: boolean) => void;
   onFit: () => void;
@@ -36,6 +37,7 @@ export function Toolbar({
   onScopeChange,
   onOptionalModeChange,
   onUpdateModeChange,
+  onSecurityModeChange,
   onLayoutChange,
   onShowLabelsChange,
   onFit,
@@ -95,6 +97,17 @@ export function Toolbar({
             <SelectItem value="patch">{updateLabel("Patch", document.versionSummary, "patch")}</SelectItem>
             <SelectItem value="unknown">{updateLabel("Unknown", document.versionSummary, "unknown")}</SelectItem>
             <SelectItem value="unavailable">{updateLabel("Unavailable", document.versionSummary, "unavailable")}</SelectItem>
+          </Select>
+        ) : null}
+
+        {document.securitySummary?.checked ? (
+          <Select value={filters.securityMode} onValueChange={(value) => onSecurityModeChange(value as SecurityFilterMode)} label="Security filter">
+            <SelectItem value="all">All security</SelectItem>
+            <SelectItem value="vulnerable">Vulnerable ({document.securitySummary.vulnerableNodes})</SelectItem>
+            <SelectItem value="critical">Critical ({document.securitySummary.critical})</SelectItem>
+            <SelectItem value="high">High ({document.securitySummary.high})</SelectItem>
+            <SelectItem value="medium">Medium ({document.securitySummary.medium})</SelectItem>
+            <SelectItem value="low">Low ({document.securitySummary.low})</SelectItem>
           </Select>
         ) : null}
 

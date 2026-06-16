@@ -86,6 +86,7 @@ function emptyFilters(): FilterState {
     scopes: new Set(),
     optionalMode: "all",
     updateMode: "all",
+    securityMode: "all",
     collapsedNodeIds: new Set()
   };
 }

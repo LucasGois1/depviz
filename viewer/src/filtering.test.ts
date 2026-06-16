@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildVisibility, createFilterState } from "./filtering";
-import type { DepvizDocument } from "./types";
+import type { DepvizDocument, GraphNode } from "./types";
 
 const document: DepvizDocument = {
   schemaVersion: "1.0",
@@ -245,6 +245,26 @@ describe("buildVisibility", () => {
     expect(visibility.matchingNodeIds).toEqual(new Set());
     expect(visibility.visibleEdgeIds).toEqual(new Set());
   });
+
+  it("filters to vulnerable dependencies while keeping reactor and module context visible", () => {
+    const filters = { ...createFilterState(), securityMode: "vulnerable" as const };
+    const visibility = buildVisibility(securityDocument, filters);
+
+    expect([...visibility.visibleNodeIds].sort()).toEqual(
+      [
+        "com.acme:api:jar::1.0.0",
+        "com.acme:platform-reactor:reactor::1.0.0",
+        "org.shared:shared-lib:jar::2.0.0"
+      ].sort()
+    );
+  });
+
+  it("does not apply security filtering when security summary is absent", () => {
+    const { securitySummary, ...documentWithoutSecurity } = securityDocument;
+    const filters = { ...createFilterState(), securityMode: "high" as const };
+
+    expect(buildVisibility(documentWithoutSecurity, filters).visibleNodeIds.size).toBe(documentWithoutSecurity.nodes.length);
+  });
 });
 
 function node(
@@ -321,6 +341,61 @@ const versionDocument: DepvizDocument = {
   ]
 };
 
+const securityDocument: DepvizDocument = {
+  ...document,
+  summary: {
+    nodeCount: 4,
+    edgeCount: 3,
+    nodesByScope: { root: 1, module: 1, compile: 2 },
+    nodesByGroupId: {
+      "com.acme": 2,
+      "org.safe": 1,
+      "org.shared": 1
+    }
+  },
+  securitySummary: {
+    enabled: true,
+    source: "snyk",
+    checked: true,
+    vulnerableNodes: 1,
+    affectedModules: 1,
+    critical: 0,
+    high: 1,
+    medium: 0,
+    low: 0,
+    unmappedFindings: 0
+  },
+  nodes: [
+    securityNode(
+      "com.acme:platform-reactor:reactor::1.0.0",
+      "com.acme",
+      "platform-reactor",
+      "reactor",
+      "root",
+      false,
+      true
+    ),
+    securityNode("com.acme:api:jar::1.0.0", "com.acme", "api", "jar", "module", false, false, true),
+    securityNode("org.safe:base-lib:jar::1.0.0", "org.safe", "base-lib", "jar", "compile", false),
+    securityNode("org.shared:shared-lib:jar::2.0.0", "org.shared", "shared-lib", "jar", "compile", true)
+  ],
+  edges: [
+    edge("reactor-api", "com.acme:platform-reactor:reactor::1.0.0", "com.acme:api:jar::1.0.0", "module", false),
+    edge("api-safe", "com.acme:api:jar::1.0.0", "org.safe:base-lib:jar::1.0.0", "compile", false),
+    edge("api-shared", "com.acme:api:jar::1.0.0", "org.shared:shared-lib:jar::2.0.0", "compile", false)
+  ],
+  paths: [
+    {
+      target: "org.shared:shared-lib:jar::2.0.0",
+      nodeIds: [
+        "com.acme:platform-reactor:reactor::1.0.0",
+        "com.acme:api:jar::1.0.0",
+        "org.shared:shared-lib:jar::2.0.0"
+      ]
+    }
+  ]
+};
+
 function versionNode(
   id: string,
   groupId: string,
@@ -340,5 +415,55 @@ function versionNode(
       checked: status !== "unchecked",
       message: null
     }
+  };
+}
+
+function securityNode(
+  id: string,
+  groupId: string,
+  artifactId: string,
+  type: string,
+  scope: string,
+  vulnerable: boolean,
+  root = false,
+  moduleRoot = false
+): GraphNode {
+  return {
+    ...node(id, groupId, artifactId, root ? "1.0.0" : id.split("::")[1], scope, false, root),
+    type,
+    moduleRoot,
+    securityInsight: vulnerable
+      ? {
+          status: "vulnerable",
+          maxSeverity: "high",
+          vulnerabilityCount: 1,
+          critical: 0,
+          high: 1,
+          medium: 0,
+          low: 0,
+          source: "snyk",
+          findings: [
+            {
+              id: "SNYK-JS-SHAREDLIB-123",
+              severity: "high",
+              title: "Prototype pollution",
+              packageName: groupId,
+              version: id.split("::")[1],
+              fixedVersions: ["2.0.1"],
+              url: "https://security.example/SNYK-JS-SHAREDLIB-123"
+            }
+          ]
+        }
+      : {
+          status: "not-vulnerable",
+          maxSeverity: "low",
+          vulnerabilityCount: 0,
+          critical: 0,
+          high: 0,
+          medium: 0,
+          low: 0,
+          source: "snyk",
+          findings: []
+        }
   };
 }

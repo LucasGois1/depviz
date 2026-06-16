@@ -4,6 +4,7 @@ export interface DepvizDocument {
   project: ProjectInfo;
   summary: GraphSummary;
   versionSummary?: VersionSummary;
+  securitySummary?: SecuritySummary | null;
   viewerConfig: ViewerConfig;
   nodes: GraphNode[];
   edges: GraphEdge[];
@@ -51,6 +52,7 @@ export interface GraphNode {
   coordinate: string;
   groupColorKey: string;
   versionInsight?: VersionInsight | null;
+  securityInsight?: SecurityInsight | null;
 }
 
 export interface GraphEdge {
@@ -80,6 +82,10 @@ export type OptionalMode = "all" | "required" | "optional";
 
 export type UpdateFilterMode = "all" | "outdated" | "major" | "minor" | "patch" | "unknown" | "unavailable";
 
+export type SecuritySeverity = "critical" | "high" | "medium" | "low";
+
+export type SecurityFilterMode = "all" | "vulnerable" | SecuritySeverity;
+
 export interface VersionInsight {
   currentVersion: string;
   latestVersion: string | null;
@@ -101,11 +107,47 @@ export interface VersionSummary {
   unavailable: number;
 }
 
+export interface SecurityFinding {
+  id: string;
+  severity: SecuritySeverity;
+  title: string;
+  packageName: string;
+  version: string;
+  fixedVersions: string[];
+  url: string;
+}
+
+export interface SecurityInsight {
+  status: "not-vulnerable" | "vulnerable" | "unavailable" | "unchecked";
+  maxSeverity: SecuritySeverity;
+  vulnerabilityCount: number;
+  critical: number;
+  high: number;
+  medium: number;
+  low: number;
+  source: string;
+  findings: SecurityFinding[];
+}
+
+export interface SecuritySummary {
+  enabled: boolean;
+  source: string;
+  checked: boolean;
+  vulnerableNodes: number;
+  affectedModules: number;
+  critical: number;
+  high: number;
+  medium: number;
+  low: number;
+  unmappedFindings: number;
+}
+
 export interface FilterState {
   search: string;
   scopes: Set<string>;
   optionalMode: OptionalMode;
   updateMode: UpdateFilterMode;
+  securityMode: SecurityFilterMode;
   collapsedNodeIds: Set<string>;
 }
 

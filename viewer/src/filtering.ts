@@ -1,5 +1,14 @@
 import { buildAdjacency, nodeSearchText } from "./graph";
-import type { DepvizDocument, FilterState, GraphEdge, GraphNode, OptionalMode, UpdateFilterMode, VisibilityState } from "./types";
+import type {
+  DepvizDocument,
+  FilterState,
+  GraphEdge,
+  GraphNode,
+  OptionalMode,
+  SecurityFilterMode,
+  UpdateFilterMode,
+  VisibilityState
+} from "./types";
 
 export function createFilterState(): FilterState {
   return {
@@ -7,6 +16,7 @@ export function createFilterState(): FilterState {
     scopes: new Set(),
     optionalMode: "all",
     updateMode: "all",
+    securityMode: "all",
     collapsedNodeIds: new Set()
   };
 }
@@ -19,8 +29,9 @@ export function buildVisibility(document: DepvizDocument, filters: FilterState):
   );
   const reachable = reachableFromRoots(document, filters, baseAllowed, nodeById);
   const updateFilteringEnabled = document.versionSummary?.enabled === true && filters.updateMode !== "all";
-  const matchingNodeIds = matchingReachableNodes(document, filters, reachable, updateFilteringEnabled);
-  const hasNodeMatchingFilter = Boolean(filters.search.trim()) || updateFilteringEnabled;
+  const securityFilteringEnabled = document.securitySummary?.checked === true && filters.securityMode !== "all";
+  const matchingNodeIds = matchingReachableNodes(document, filters, reachable, updateFilteringEnabled, securityFilteringEnabled);
+  const hasNodeMatchingFilter = Boolean(filters.search.trim()) || updateFilteringEnabled || securityFilteringEnabled;
   const visibleNodeIds = hasNodeMatchingFilter
     ? expandSearchContext(matchingNodeIds, adjacency, reachable)
     : reachable;
@@ -53,6 +64,10 @@ export function setUpdateMode(filters: FilterState, updateMode: UpdateFilterMode
   return { ...filters, updateMode };
 }
 
+export function setSecurityMode(filters: FilterState, securityMode: SecurityFilterMode): FilterState {
+  return { ...filters, securityMode };
+}
+
 export function setScopeEnabled(filters: FilterState, scope: string, enabled: boolean): FilterState {
   const scopes = new Set(filters.scopes);
   if (enabled) {
@@ -74,6 +89,9 @@ function nodePassesOptionalFilter(node: GraphNode, filters: FilterState): boolea
 }
 
 function edgePassesFilters(edge: GraphEdge, filters: FilterState): boolean {
+  if (edge.scope === "root" || edge.scope === "module") {
+    return true;
+  }
   if (filters.scopes.size > 0 && !filters.scopes.has(edge.scope)) {
     return false;
   }
@@ -109,6 +127,20 @@ export function nodeMatchesUpdateMode(node: GraphNode, updateMode: UpdateFilterM
   }
 
   return insight.status === "outdated" && insight.updateType === updateMode;
+}
+
+export function nodeMatchesSecurityMode(node: GraphNode, securityMode: SecurityFilterMode): boolean {
+  if (securityMode === "all") {
+    return true;
+  }
+  const insight = node.securityInsight;
+  if (!insight || insight.status !== "vulnerable") {
+    return false;
+  }
+  if (securityMode === "vulnerable") {
+    return true;
+  }
+  return insight.maxSeverity === securityMode;
 }
 
 function reachableFromRoots(
@@ -152,10 +184,11 @@ function matchingReachableNodes(
   document: DepvizDocument,
   filters: FilterState,
   reachable: Set<string>,
-  updateFilteringEnabled: boolean
+  updateFilteringEnabled: boolean,
+  securityFilteringEnabled: boolean
 ): Set<string> {
   const normalizedSearch = filters.search.trim().toLowerCase();
-  if (!normalizedSearch && !updateFilteringEnabled) {
+  if (!normalizedSearch && !updateFilteringEnabled && !securityFilteringEnabled) {
     return new Set();
   }
   return new Set(
@@ -163,6 +196,7 @@ function matchingReachableNodes(
       .filter((node) => reachable.has(node.id))
       .filter((node) => !normalizedSearch || nodeSearchText(node).includes(normalizedSearch))
       .filter((node) => !updateFilteringEnabled || nodeMatchesUpdateMode(node, filters.updateMode))
+      .filter((node) => !securityFilteringEnabled || nodeMatchesSecurityMode(node, filters.securityMode))
       .map((node) => node.id)
   );
 }
