@@ -10,6 +10,9 @@ import dev.gois.tools.depviz.graph.ReactorDependencyGraphExtractor;
 import dev.gois.tools.depviz.output.BrowserOpener;
 import dev.gois.tools.depviz.output.OutputFiles;
 import dev.gois.tools.depviz.output.ViewerWriter;
+import dev.gois.tools.depviz.security.SecurityCheckResult;
+import dev.gois.tools.depviz.security.SecurityGraphEnricher;
+import dev.gois.tools.depviz.security.SnykRunner;
 import dev.gois.tools.depviz.version.MavenVersionLookup;
 import dev.gois.tools.depviz.version.VersionCheckResult;
 import dev.gois.tools.depviz.version.VersionUpdateChecker;
@@ -97,7 +100,11 @@ public final class OpenMojo extends AbstractMojo {
             new MavenDependencyGraphExtractor(dependencyCollectorBuilder)
         ).extract(project, reactorProjects, config);
         VersionCheckResult versionCheck = checkVersions(root, config);
-        GraphDocument document = new GraphDocumentBuilder().build(root, projectInfo(), config, versionCheck);
+        SecurityCheckResult securityCheck = checkSecurity(config);
+        GraphDocument document = new SecurityGraphEnricher().enrich(
+            new GraphDocumentBuilder().build(root, projectInfo(), config, versionCheck),
+            securityCheck
+        );
         OutputFiles outputFiles = write(document, config);
         URI htmlUri = outputFiles.htmlFile().toAbsolutePath().normalize().toUri();
 
@@ -146,6 +153,10 @@ public final class OpenMojo extends AbstractMojo {
             getLog().warn("Version update check failed: " + message);
             return VersionCheckResult.failed(config.checkUpdates(), message);
         }
+    }
+
+    private SecurityCheckResult checkSecurity(DepvizConfig config) {
+        return new SnykRunner().run(config, project.getBasedir() == null ? null : project.getBasedir().toPath());
     }
 
     private OutputFiles write(GraphDocument document, DepvizConfig config) throws MojoExecutionException {
