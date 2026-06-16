@@ -75,7 +75,8 @@ class CliMavenSmokeTest {
             "depviz-maven-plugin",
             "-am",
             "install",
-            "-DskipTests"
+            "-DskipTests",
+            "-Dinvoker.skip=true"
         );
         Process process = new ProcessBuilder(command)
             .directory(repoRoot.toFile())
