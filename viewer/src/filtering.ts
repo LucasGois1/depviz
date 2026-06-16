@@ -68,7 +68,27 @@ export function setSecurityMode(filters: FilterState, securityMode: SecurityFilt
   return { ...filters, securityMode };
 }
 
-export function setScopeEnabled(filters: FilterState, scope: string, enabled: boolean): FilterState {
+export function scopeIsEnabled(filters: FilterState, scope: string): boolean {
+  return filters.scopes.size === 0 || filters.scopes.has(scope);
+}
+
+export function setScopeEnabled(filters: FilterState, scope: string, enabled: boolean, allScopes: string[] = []): FilterState {
+  if (allScopes.length > 0) {
+    const scopes = filters.scopes.size === 0 ? new Set(allScopes) : new Set(filters.scopes);
+    if (enabled) {
+      scopes.add(scope);
+    } else {
+      scopes.delete(scope);
+    }
+    if (scopes.size === 0) {
+      return filters;
+    }
+    if (scopes.size === allScopes.length) {
+      return { ...filters, scopes: new Set() };
+    }
+    return { ...filters, scopes };
+  }
+
   const scopes = new Set(filters.scopes);
   if (enabled) {
     scopes.add(scope);

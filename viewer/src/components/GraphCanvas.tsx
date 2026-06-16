@@ -29,6 +29,10 @@ type DepvizSigma = Sigma<SigmaNodeAttributes, SigmaEdgeAttributes>;
 const FIT_MIN_RATIO = 0.18;
 const FIT_DURATION_MS = 220;
 
+export function nextSelectedNodeId(selectedNodeId: string | null, clickedNodeId: string): string | null {
+  return selectedNodeId === clickedNodeId ? null : clickedNodeId;
+}
+
 export function GraphCanvas({
   document,
   layout,
@@ -42,12 +46,17 @@ export function GraphCanvas({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const rendererRef = useRef<DepvizSigma | null>(null);
   const onSelectNodeRef = useRef(onSelectNode);
+  const selectedNodeIdRef = useRef(selectedNodeId);
   const graph = useMemo(() => toSigmaGraph(document, layout), [document, layout]);
   const adjacency = useMemo(() => buildAdjacency(document), [document]);
 
   useEffect(() => {
     onSelectNodeRef.current = onSelectNode;
   }, [onSelectNode]);
+
+  useEffect(() => {
+    selectedNodeIdRef.current = selectedNodeId;
+  }, [selectedNodeId]);
 
   useEffect(() => {
     if (!containerRef.current) {
@@ -62,7 +71,7 @@ export function GraphCanvas({
       onSelectNodeRef.current(null);
     });
     renderer.on("clickNode", ({ node }) => {
-      onSelectNodeRef.current(node);
+      onSelectNodeRef.current(nextSelectedNodeId(selectedNodeIdRef.current, node));
     });
 
     rendererRef.current = renderer;

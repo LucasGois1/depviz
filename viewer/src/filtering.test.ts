@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildVisibility, createFilterState } from "./filtering";
+import { buildVisibility, createFilterState, scopeIsEnabled, setScopeEnabled } from "./filtering";
 import type { DepvizDocument, GraphNode } from "./types";
 
 const document: DepvizDocument = {
@@ -36,6 +36,32 @@ const document: DepvizDocument = {
   paths: [],
   diagnostics: []
 };
+
+describe("scope filters", () => {
+  it("treats an empty scope set as every scope enabled", () => {
+    const filters = createFilterState();
+
+    expect(scopeIsEnabled(filters, "compile")).toBe(true);
+    expect(scopeIsEnabled(filters, "runtime")).toBe(true);
+  });
+
+  it("normalizes all selected scopes back to the default all-scopes state", () => {
+    const filters = createFilterState();
+    const compileOnly = setScopeEnabled(filters, "runtime", false, ["compile", "runtime"]);
+    const allEnabled = setScopeEnabled(compileOnly, "runtime", true, ["compile", "runtime"]);
+
+    expect(compileOnly.scopes).toEqual(new Set(["compile"]));
+    expect(allEnabled.scopes).toEqual(new Set());
+    expect(scopeIsEnabled(allEnabled, "compile")).toBe(true);
+    expect(scopeIsEnabled(allEnabled, "runtime")).toBe(true);
+  });
+
+  it("keeps the last active scope enabled instead of creating an ambiguous empty selection", () => {
+    const compileOnly = { ...createFilterState(), scopes: new Set(["compile"]) };
+
+    expect(setScopeEnabled(compileOnly, "compile", false, ["compile", "runtime"])).toBe(compileOnly);
+  });
+});
 
 describe("buildVisibility", () => {
   it("keeps matching nodes, ancestors, descendants, and connecting edges visible for search", () => {

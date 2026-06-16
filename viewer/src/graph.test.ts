@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { availableScopes, buildAdjacency, dependencyFanIn, hasSharedDependencies, recommendedInitialLayout, shouldShowAllLabelsInitially } from "./graph";
+import {
+  availableScopes,
+  buildAdjacency,
+  dependencyFanIn,
+  hasSharedDependencies,
+  layoutDisplayName,
+  recommendedInitialLayout,
+  shouldShowAllLabelsInitially
+} from "./graph";
 import type { DepvizDocument } from "./types";
 
 const sharedTargetId = "org.shared:logging:jar::2.0.0";
@@ -108,6 +116,15 @@ describe("availableScopes", () => {
         summary: { ...document.summary, nodesByScope: { root: 1, module: 2, compile: 3, runtime: 1 } }
       })
     ).toEqual(["compile", "runtime"]);
+  });
+});
+
+describe("layoutDisplayName", () => {
+  it("uses product-facing names for dependency analysis modes", () => {
+    expect(layoutDisplayName("breadthfirst")).toBe("Flow");
+    expect(layoutDisplayName("force")).toBe("Map");
+    expect(layoutDisplayName("circle")).toBe("Groups");
+    expect(layoutDisplayName("concentric")).toBe("Hubs");
   });
 });
 
