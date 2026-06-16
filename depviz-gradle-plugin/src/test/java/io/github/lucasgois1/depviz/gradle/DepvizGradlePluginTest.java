@@ -26,12 +26,13 @@ class DepvizGradlePluginTest {
         project.getPluginManager().apply(DepvizGradlePlugin.class);
 
         var extension = project.getExtensions().getByType(DepvizExtension.class);
+        project.getLayout().getBuildDirectory().set(project.getLayout().getProjectDirectory().dir("custom-build"));
 
         assertThat(extension.getScope().get()).isEqualTo("runtime");
         assertThat(extension.getOpen().get()).isTrue();
         assertThat(extension.getSnyk().get()).isEqualTo("auto");
         assertThat(extension.getLayout().get()).isEqualTo("breadthfirst");
-        assertThat(extension.getOutputDirectory().get().getAsFile()).isEqualTo(project.getLayout().getBuildDirectory().dir("depviz").get().getAsFile());
+        assertThat(extension.getOutputDirectory().get().getAsFile()).isEqualTo(project.getLayout().getProjectDirectory().dir("custom-build/depviz").getAsFile());
         assertThat(extension.getSnykJson().isPresent()).isFalse();
     }
 
@@ -227,8 +228,27 @@ class DepvizGradlePluginTest {
             .build();
 
         JsonNode document = OBJECT_MAPPER.readTree(Files.readString(projectDir.resolve("build/depviz/dependency-graph.json")));
+        JsonNode root = rootNode(document);
+        JsonNode slf4jApi = onlyNodeByArtifactId(document, "slf4j-api");
+        JsonNode junitJupiterApi = onlyNodeByArtifactId(document, "junit-jupiter-api");
+
         assertThat(nodesByArtifactId(document, "slf4j-api")).hasSize(1);
         assertThat(nodesByArtifactId(document, "junit-jupiter-api")).hasSize(1);
+        assertThat(incomingScopes(document, root.path("id").asText(), slf4jApi.path("id").asText()))
+            .containsExactlyInAnyOrder("compileClasspath", "runtimeClasspath", "testRuntimeClasspath");
+        assertThat(incomingScopes(document, root.path("id").asText(), junitJupiterApi.path("id").asText()))
+            .containsExactly("testRuntimeClasspath");
+    }
+
+    private static JsonNode rootNode(JsonNode document) {
+        List<JsonNode> matches = new ArrayList<>();
+        for (JsonNode node : document.path("nodes")) {
+            if (node.path("root").asBoolean()) {
+                matches.add(node);
+            }
+        }
+        assertThat(matches).hasSize(1);
+        return matches.get(0);
     }
 
     private static JsonNode onlyNodeByArtifactId(JsonNode document, String artifactId) {
@@ -255,6 +275,16 @@ class DepvizGradlePluginTest {
             }
         }
         return sources;
+    }
+
+    private static List<String> incomingScopes(JsonNode document, String sourceId, String targetId) {
+        List<String> scopes = new ArrayList<>();
+        for (JsonNode edge : document.path("edges")) {
+            if (edge.path("source").asText().equals(sourceId) && edge.path("target").asText().equals(targetId)) {
+                scopes.add(edge.path("scope").asText());
+            }
+        }
+        return scopes;
     }
 
     private static List<String> textValues(JsonNode arrayNode) {
