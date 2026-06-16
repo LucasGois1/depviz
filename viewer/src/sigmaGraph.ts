@@ -79,6 +79,7 @@ export interface SigmaGraphStateParams {
   visibility: VisibilityState;
   selectedNodeId: string | null;
   showLabels: boolean;
+  searchActive?: boolean;
 }
 
 export function toSigmaGraph(document: DepvizDocument, layout: LayoutName): SigmaDependencyGraph {
@@ -125,6 +126,7 @@ export function applySigmaGraphState(graph: SigmaDependencyGraph, params: SigmaG
   const { adjacency, selectedNodeId, showLabels, visibility } = params;
   const selectedNeighborhood = selectedNodeId ? closedNeighborhood(adjacency, selectedNodeId) : null;
   const denseGraph = graph.order >= DENSE_LABEL_THRESHOLD;
+  const searchActive = params.searchActive === true && visibility.matchingNodeIds.size > 0;
 
   graph.forEachNode((nodeId, attributes) => {
     const visible = visibility.visibleNodeIds.has(nodeId);
@@ -132,6 +134,7 @@ export function applySigmaGraphState(graph: SigmaDependencyGraph, params: SigmaG
     const neighbor = Boolean(selectedNeighborhood?.has(nodeId));
     const dimmed = Boolean(selectedNodeId && !neighbor);
     const matched = visibility.matchingNodeIds.has(nodeId);
+    const searchContext = searchActive && visible && !matched;
     const hubLabel = attributes.fanIn >= (denseGraph ? 8 : 4);
     const keyLabel = attributes.root || attributes.moduleRoot || hubLabel || (!denseGraph && (attributes.shared || attributes.depth <= 1));
     const versionLabel = attributes.versionStatus === "outdated" || attributes.versionStatus === "unavailable";
@@ -142,11 +145,11 @@ export function applySigmaGraphState(graph: SigmaDependencyGraph, params: SigmaG
     graph.mergeNodeAttributes(nodeId, {
       hidden: !visible,
       highlighted: selected || matched,
-      color: dimmed ? "rgba(71, 85, 105, 0.3)" : matched && !selected ? "#fbbf24" : attributes.baseColor,
+      color: dimmed ? "rgba(71, 85, 105, 0.3)" : matched && !selected ? "#fbbf24" : searchContext ? searchContextNodeColor(attributes) : attributes.baseColor,
       label: labelVisible ? attributes.baseLabel : "",
       forceLabel,
-      size: selected ? Math.max(attributes.baseSize + 3, 12) : attributes.baseSize,
-      zIndex: selected ? 30 : attributes.shared ? 12 : attributes.root ? 20 : 1
+      size: selected ? Math.max(attributes.baseSize + 3, 12) : matched ? Math.max(attributes.baseSize + 2.2, 10.5) : attributes.baseSize,
+      zIndex: selected ? 30 : matched ? 24 : attributes.shared ? 12 : attributes.root ? 20 : 1
     });
   });
 
@@ -154,14 +157,26 @@ export function applySigmaGraphState(graph: SigmaDependencyGraph, params: SigmaG
     const visible = visibility.visibleEdgeIds.has(edgeId);
     const neighbor = Boolean(selectedNodeId && (source === selectedNodeId || target === selectedNodeId));
     const dimmed = Boolean(selectedNodeId && !neighbor);
+    const searchMatch = searchActive && (visibility.matchingNodeIds.has(source) || visibility.matchingNodeIds.has(target));
+    const searchContext = searchActive && visible && !searchMatch;
 
     graph.mergeEdgeAttributes(edgeId, {
       hidden: !visible,
-      color: dimmed ? "rgba(71, 85, 105, 0.24)" : neighbor ? "#dbeafe" : attributes.baseColor,
-      size: neighbor ? Math.max(attributes.baseSize + 1.1, 3.1) : attributes.baseSize,
-      zIndex: neighbor ? 20 : attributes.sharedTarget ? 8 : 1
+      color: dimmed ? "rgba(71, 85, 105, 0.24)" : neighbor ? "#dbeafe" : searchMatch ? "#fbbf24" : searchContext ? "rgba(88, 166, 255, 0.5)" : attributes.baseColor,
+      size: neighbor ? Math.max(attributes.baseSize + 1.1, 3.1) : searchMatch ? Math.max(attributes.baseSize + 0.95, 2.55) : searchContext ? Math.max(attributes.baseSize + 0.32, 1.35) : attributes.baseSize,
+      zIndex: neighbor ? 20 : searchMatch ? 16 : searchContext ? 10 : attributes.sharedTarget ? 8 : 1
     });
   });
+}
+
+function searchContextNodeColor(attributes: SigmaNodeAttributes): string {
+  if (attributes.root || attributes.moduleRoot || attributes.depth <= 1) {
+    return "rgba(88, 166, 255, 0.64)";
+  }
+  if (attributes.shared) {
+    return "rgba(45, 212, 191, 0.56)";
+  }
+  return "rgba(127, 142, 163, 0.54)";
 }
 
 export function visibleSigmaNodeExtent(graph: SigmaDependencyGraph): SigmaNodeExtent | null {

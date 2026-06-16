@@ -438,6 +438,25 @@ describe("applySigmaGraphState", () => {
     expect(graph.getEdgeAttribute("root-alpha", "color")).toContain("rgba");
   });
 
+  it("emphasizes search matches and visible search paths", () => {
+    const graph = toSigmaGraph(document, "force");
+    const adjacency = buildAdjacency(document);
+    const visibility: VisibilityState = {
+      visibleNodeIds: new Set(document.nodes.map((current) => current.id)),
+      visibleEdgeIds: new Set(document.edges.map((current) => current.id)),
+      matchingNodeIds: new Set([sharedTargetId])
+    };
+
+    applySigmaGraphState(graph, { adjacency, visibility, selectedNodeId: null, showLabels: false, searchActive: true });
+
+    expect(graph.getNodeAttribute(sharedTargetId, "color")).toBe("#fbbf24");
+    expect(graph.getNodeAttribute(sharedTargetId, "size")).toBeGreaterThan(graph.getNodeAttribute(sharedTargetId, "baseSize"));
+    expect(graph.getNodeAttribute("org.alpha:client:jar::1.0.0", "color")).toBe("rgba(88, 166, 255, 0.64)");
+    expect(graph.getEdgeAttribute("alpha-shared", "color")).toBe("#fbbf24");
+    expect(graph.getEdgeAttribute("alpha-shared", "size")).toBeGreaterThan(graph.getEdgeAttribute("alpha-shared", "baseSize"));
+    expect(graph.getEdgeAttribute("root-alpha", "color")).toBe("rgba(88, 166, 255, 0.5)");
+  });
+
   it("shows deep current labels without forcing them when all labels are enabled", () => {
     const deepNodeId = "org.gamma:deep-helper:jar::1.0.0";
     const deepDocument: DepvizDocument = {
