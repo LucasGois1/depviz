@@ -33,7 +33,7 @@ gradlePlugin {
             implementationClass = "io.github.lucasgois1.depviz.gradle.DepvizGradlePlugin"
             displayName = "Depviz"
             description = "Generate an offline interactive dependency graph viewer for Java projects."
-            tags.set(listOf("dependency-graph", "java", "maven", "gradle", "snyk"))
+            tags.set(listOf("dependency-graph", "java", "maven", "snyk", "visualization"))
         }
     }
 }
