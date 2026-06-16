@@ -15,9 +15,50 @@ else
   curl -fsSL "$BASE_URL/depviz-cli.jar" -o "$LIB_DIR/depviz-cli.jar"
 fi
 
-cat > "$BIN_DIR/depviz" <<LAUNCHER
+cat > "$BIN_DIR/depviz" <<'LAUNCHER'
 #!/bin/sh
-exec java -jar "$LIB_DIR/depviz-cli.jar" "\$@"
+
+case "$0" in
+  */*) SCRIPT_PATH="$0" ;;
+  *) SCRIPT_PATH="$(command -v "$0")" ;;
+esac
+
+SCRIPT_DIR="$(CDPATH= cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
+JAR_PATH="$SCRIPT_DIR/../lib/depviz-cli.jar"
+
+if [ -n "${JAVA_HOME:-}" ]; then
+  JAVA_CMD="$JAVA_HOME/bin/java"
+  if [ ! -x "$JAVA_CMD" ]; then
+    echo "Depviz requires Java 17+, but JAVA_HOME does not contain an executable bin/java: $JAVA_HOME" >&2
+    exit 1
+  fi
+elif command -v java >/dev/null 2>&1; then
+  JAVA_CMD="java"
+else
+  echo "Depviz requires Java 17+, but no java executable was found. Install Java 17+ or set JAVA_HOME." >&2
+  exit 1
+fi
+
+JAVA_VERSION_OUTPUT="$("$JAVA_CMD" -version 2>&1)"
+JAVA_VERSION="$(printf '%s\n' "$JAVA_VERSION_OUTPUT" | sed -n 's/.*version "\([^"]*\)".*/\1/p' | sed -n '1p')"
+case "$JAVA_VERSION" in
+  1.*) JAVA_MAJOR="$(printf '%s\n' "$JAVA_VERSION" | sed 's/^1\.\([0-9][0-9]*\).*/\1/')" ;;
+  *) JAVA_MAJOR="$(printf '%s\n' "$JAVA_VERSION" | sed 's/^\([0-9][0-9]*\).*/\1/')" ;;
+esac
+
+case "$JAVA_MAJOR" in
+  ''|*[!0-9]*)
+    echo "Depviz requires Java 17+, but could not determine Java version from $JAVA_CMD." >&2
+    exit 1
+    ;;
+esac
+
+if [ "$JAVA_MAJOR" -lt 17 ]; then
+  echo "Depviz requires Java 17+; found Java $JAVA_VERSION from $JAVA_CMD. Set JAVA_HOME to a Java 17+ installation or update PATH." >&2
+  exit 1
+fi
+
+exec "$JAVA_CMD" -jar "$JAR_PATH" "$@"
 LAUNCHER
 
 chmod +x "$BIN_DIR/depviz"
@@ -25,5 +66,8 @@ chmod +x "$BIN_DIR/depviz"
 echo "Depviz installed at $BIN_DIR/depviz"
 case ":$PATH:" in
   *":$BIN_DIR:"*) ;;
-  *) echo "Add this to your PATH: export PATH=\"$BIN_DIR:\$PATH\"" ;;
+  *)
+    echo "Add this directory to your PATH to run depviz from anywhere:"
+    echo "  $BIN_DIR"
+    ;;
 esac
