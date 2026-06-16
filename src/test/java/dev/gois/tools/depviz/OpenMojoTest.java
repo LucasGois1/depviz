@@ -33,6 +33,12 @@ class OpenMojoTest {
         assertThat(outputDirectory).isNotNull();
         assertThat(text(openMojo, "configuration/outputDirectory/@default-value"))
             .isEqualTo("${project.build.directory}/depviz");
+        assertThat(text(openMojo, "configuration/reactorProjects/@default-value")).isEqualTo("${reactorProjects}");
+        assertThat(text(openMojo, "configuration/snyk")).isEqualTo("${depviz.snyk}");
+        assertThat(text(openMojo, "configuration/snykJson")).isEqualTo("${depviz.snykJson}");
+        assertThat(text(openMojo, "configuration/snykCommand")).isEqualTo("${depviz.snykCommand}");
+        assertThat(text(openMojo, "configuration/snykOrg")).isEqualTo("${depviz.snykOrg}");
+        assertThat(text(openMojo, "configuration/snykAllProjects")).isEqualTo("${depviz.snykAllProjects}");
 
         Method execute = OpenMojo.class.getMethod("execute");
         assertThat(execute.getReturnType()).isEqualTo(Void.TYPE);
