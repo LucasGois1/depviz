@@ -24,6 +24,10 @@ public record VersionCheckResult(
         );
     }
 
+    public static VersionCheckResult disabled() {
+        return empty(false);
+    }
+
     public static VersionCheckResult failed(boolean enabled, String message) {
         return new VersionCheckResult(
             Map.of(),

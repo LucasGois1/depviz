@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.github.lucasgois1.depviz.config.DepvizConfig;
 import io.github.lucasgois1.depviz.graph.ArtifactCoordinate;
+import io.github.lucasgois1.depviz.graph.DependencyNodeInput;
 import io.github.lucasgois1.depviz.graph.ExtractedDependencyNode;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -30,6 +31,7 @@ class ReactorDependencyGraphExtractorTest {
         assertThat(aggregate.scope()).isEqualTo("root");
         assertThat(aggregate.children()).extracting(child -> child.coordinate().artifactId()).containsExactly("api", "worker");
         assertThat(aggregate.children()).extracting(ExtractedDependencyNode::scope).containsExactly("module", "module");
+        assertThat(aggregate.toInput(false).children()).extracting(DependencyNodeInput::moduleRoot).containsExactly(true, true);
         assertThat(single.extractedProjects()).extracting(MavenProject::getArtifactId).containsExactly("api", "worker");
     }
 
