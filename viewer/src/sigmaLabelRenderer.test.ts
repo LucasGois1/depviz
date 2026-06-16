@@ -1,5 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
-import { badgeColorForUpdate, badgeTextForVersionInsight, drawDependencyNodeLabel, labelSideForCanvasPosition, versionBadgeForNode } from "./sigmaLabelRenderer";
+import {
+  badgeColorForUpdate,
+  badgeTextForVersionInsight,
+  badgesForNode,
+  drawDependencyNodeLabel,
+  labelSideForCanvasPosition,
+  securityBadgeText,
+  versionBadgeForNode
+} from "./sigmaLabelRenderer";
 import type { SigmaNodeAttributes } from "./sigmaGraph";
 import type { VersionInsight } from "./types";
 
@@ -41,6 +49,22 @@ describe("badgeColorForUpdate", () => {
   });
 });
 
+describe("securityBadgeText", () => {
+  it("maps security severities to compact badge text", () => {
+    expect(securityBadgeText({ maxSeverity: "critical", status: "vulnerable" })).toBe("C");
+    expect(securityBadgeText({ maxSeverity: "high", status: "vulnerable" })).toBe("H");
+    expect(securityBadgeText({ maxSeverity: "medium", status: "vulnerable" })).toBe("M");
+    expect(securityBadgeText({ maxSeverity: "low", status: "vulnerable" })).toBe("L");
+  });
+
+  it("does not badge unavailable, unchecked, or not-vulnerable security insight", () => {
+    expect(securityBadgeText({ maxSeverity: "high", status: "not-vulnerable" })).toBeNull();
+    expect(securityBadgeText({ maxSeverity: "high", status: "unavailable" })).toBeNull();
+    expect(securityBadgeText({ maxSeverity: "high", status: "unchecked" })).toBeNull();
+    expect(securityBadgeText(null)).toBeNull();
+  });
+});
+
 describe("versionBadgeForNode", () => {
   it("combines serialized badge text and color metadata for the renderer", () => {
     expect(versionBadgeForNode({ updateType: "major", updateBadge: "M" } as SigmaNodeAttributes)).toEqual({
@@ -58,6 +82,31 @@ describe("versionBadgeForNode", () => {
       text: "!",
       color: { background: "#fef3c7", border: "#fcd34d", text: "#b45309" }
     });
+  });
+});
+
+describe("badgesForNode", () => {
+  it("returns security and version badges as separate ordered badges", () => {
+    expect(
+      badgesForNode({
+        securityBadge: "H",
+        securitySeverity: "high",
+        updateBadge: "P",
+        updateType: "patch",
+        versionStatus: "outdated"
+      })
+    ).toEqual([
+      {
+        text: "H",
+        kind: "security",
+        color: { background: "#fee2e2", border: "#fca5a5", text: "#b91c1c" }
+      },
+      {
+        text: "P",
+        kind: "version",
+        color: { background: "#ccfbf1", border: "#5eead4", text: "#0f766e" }
+      }
+    ]);
   });
 });
 
@@ -90,7 +139,39 @@ describe("drawDependencyNodeLabel", () => {
     expect(context.stroke).toHaveBeenCalled();
     expect(context.fillText).toHaveBeenCalledWith("M", expect.any(Number), expect.any(Number));
   });
+
+  it("draws multiple badges with accumulated x offsets", () => {
+    const context = canvasContext();
+
+    drawDependencyNodeLabel(
+      context,
+      {
+        label: "client",
+        x: 100,
+        y: 50,
+        size: 7,
+        securityBadge: "H",
+        securitySeverity: "high",
+        updateType: "patch",
+        updateBadge: "P"
+      } as SigmaNodeAttributes,
+      labelSettings()
+    );
+
+    const hCall = fillTextCall(context, "H");
+    const pCall = fillTextCall(context, "P");
+
+    expect(context.fillText).toHaveBeenCalledWith("client", 110, 54);
+    expect(context.beginPath).toHaveBeenCalledTimes(2);
+    expect(hCall).toBeDefined();
+    expect(pCall).toBeDefined();
+    expect(Number(pCall?.[1])).toBeGreaterThan(Number(hCall?.[1]));
+  });
 });
+
+function fillTextCall(context: CanvasRenderingContext2D, text: string): Parameters<CanvasRenderingContext2D["fillText"]> | undefined {
+  return vi.mocked(context.fillText).mock.calls.find((call) => call[0] === text);
+}
 
 function insight(updateType: VersionInsight["updateType"], status: VersionInsight["status"]): VersionInsight {
   return {

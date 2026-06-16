@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { DetailsPanel, versionStatusText, versionUpdateText } from "./DetailsPanel";
-import type { Adjacency, FilterState, GraphNode, VersionInsight } from "../types";
+import type { Adjacency, FilterState, GraphNode, SecurityInsight, VersionInsight } from "../types";
 
 describe("version display helpers", () => {
   it("shows unavailable status separately from the actual update type", () => {
@@ -42,7 +42,59 @@ describe("DetailsPanel", () => {
     expect(html).toContain("unknown");
     expect(html).toContain("Repository lookup failed");
   });
+
+  it("renders selected node security insight after version details", () => {
+    const selectedNode = {
+      ...nodeWithUnavailableInsight(),
+      securityInsight: vulnerableInsight()
+    };
+    const html = renderToStaticMarkup(
+      <DetailsPanel
+        adjacency={emptyAdjacency()}
+        nodeById={new Map([[selectedNode.id, selectedNode]])}
+        selectedNode={selectedNode}
+        filters={emptyFilters()}
+        onSelectNode={() => undefined}
+        onToggleCollapse={() => undefined}
+      />
+    );
+
+    expect(html.indexOf("<h3>Version</h3>")).toBeLessThan(html.indexOf("<h3>Security</h3>"));
+    expect(html).toContain("Max severity");
+    expect(html).toContain("high");
+    expect(html).toContain("Findings");
+    expect(html).toContain("Prototype pollution in example-lib");
+    expect(html).toContain("SNYK-JAVA-EXAMPLELIB-123");
+    expect(html).toContain("Package");
+    expect(html).toContain("org.example:example-lib");
+    expect(html).toContain("Fixed versions");
+    expect(html).toContain("1.0.1, 1.1.0");
+  });
 });
+
+function vulnerableInsight(): SecurityInsight {
+  return {
+    status: "vulnerable",
+    maxSeverity: "high",
+    vulnerabilityCount: 2,
+    critical: 0,
+    high: 1,
+    medium: 1,
+    low: 0,
+    source: "snyk",
+    findings: [
+      {
+        id: "SNYK-JAVA-EXAMPLELIB-123",
+        severity: "high",
+        title: "Prototype pollution in example-lib",
+        packageName: "org.example:example-lib",
+        version: "1.0.0",
+        fixedVersions: ["1.0.1", "1.1.0"],
+        url: "https://security.example/SNYK-JAVA-EXAMPLELIB-123"
+      }
+    ]
+  };
+}
 
 function nodeWithUnavailableInsight(): GraphNode {
   return {

@@ -173,6 +173,53 @@ describe("toSigmaGraph", () => {
     expect(graph.getNodeAttribute(currentNodeId, "forceLabel")).toBe(true);
   });
 
+  it("serializes vulnerable security badge attributes and forces labels through graph state", () => {
+    const vulnerableNodeId = "org.security:vulnerable-helper:jar::1.0.0";
+    const securityDocument: DepvizDocument = {
+      ...document,
+      nodes: [
+        ...document.nodes,
+        {
+          ...node(vulnerableNodeId, "org.security", "vulnerable-helper", false, 3),
+          securityInsight: {
+            status: "vulnerable",
+            maxSeverity: "high",
+            vulnerabilityCount: 2,
+            critical: 0,
+            high: 1,
+            medium: 1,
+            low: 0,
+            source: "snyk",
+            findings: []
+          }
+        }
+      ],
+      edges: [...document.edges, edge("beta-vulnerable", "org.beta:service:jar::1.0.0", vulnerableNodeId, 3)]
+    };
+    const graph = toSigmaGraph(securityDocument, "force");
+    const adjacency = buildAdjacency(securityDocument);
+    const visibility: VisibilityState = {
+      visibleNodeIds: new Set(securityDocument.nodes.map((current) => current.id)),
+      visibleEdgeIds: new Set(securityDocument.edges.map((current) => current.id)),
+      matchingNodeIds: new Set()
+    };
+
+    expect(graph.getNodeAttributes(vulnerableNodeId)).toMatchObject({
+      securitySeverity: "high",
+      securityBadge: "H",
+      forceLabel: true
+    });
+
+    applySigmaGraphState(graph, { adjacency, visibility, selectedNodeId: null, showLabels: false });
+
+    expect(graph.getNodeAttributes(vulnerableNodeId)).toMatchObject({
+      label: "vulnerable-helper",
+      forceLabel: true,
+      securitySeverity: "high",
+      securityBadge: "H"
+    });
+  });
+
   it("preserves pre-badge node sizing semantics", () => {
     const hubDocument: DepvizDocument = {
       ...document,

@@ -1,6 +1,6 @@
 import type { NodeLabelDrawingFunction } from "sigma/rendering";
 import type { SigmaEdgeAttributes, SigmaNodeAttributes, SigmaVersionUpdateType } from "./sigmaGraph";
-import type { VersionInsight } from "./types";
+import type { SecurityInsight, SecuritySeverity, VersionInsight } from "./types";
 
 interface BadgeColor {
   background: string;
@@ -11,6 +11,10 @@ interface BadgeColor {
 interface VersionBadge {
   text: string;
   color: BadgeColor;
+}
+
+interface LabelBadge extends VersionBadge {
+  kind: "security" | "version";
 }
 
 type VersionBadgeTone = SigmaVersionUpdateType | "unavailable";
@@ -37,21 +41,25 @@ export const drawDependencyNodeLabel: NodeLabelDrawingFunction<SigmaNodeAttribut
 
   const x = data.x + data.size + 3;
   const y = data.y + size / 3;
-  const badge = versionBadgeForNode(data as Partial<SigmaNodeAttributes>);
+  const badges = badgesForNode(data as Partial<SigmaNodeAttributes>);
 
   context.fillText(label, x, y);
 
-  if (badge) {
+  if (badges.length > 0) {
     const textWidth = context.measureText(label).width;
-    drawBadge(context, {
-      badge,
-      labelX: x,
-      labelY: y,
-      labelWidth: textWidth,
-      size,
-      font,
-      weight
-    });
+    let xOffset = 6;
+    for (const badge of badges) {
+      xOffset = drawBadge(context, {
+        badge,
+        labelX: x,
+        labelY: y,
+        labelWidth: textWidth,
+        xOffset,
+        size,
+        font,
+        weight
+      });
+    }
   }
 };
 
@@ -96,6 +104,33 @@ export function badgeColorForUpdate(updateType: VersionBadgeTone): BadgeColor {
   return { background: "#e5e7eb", border: "#cbd5e1", text: "#475569" };
 }
 
+export function securityBadgeText(insight: Pick<SecurityInsight, "maxSeverity" | "status"> | null | undefined): string | null {
+  if (!insight || insight.status !== "vulnerable") {
+    return null;
+  }
+  if (insight.maxSeverity === "critical") {
+    return "C";
+  }
+  if (insight.maxSeverity === "high") {
+    return "H";
+  }
+  if (insight.maxSeverity === "medium") {
+    return "M";
+  }
+  if (insight.maxSeverity === "low") {
+    return "L";
+  }
+  return null;
+}
+
+export function badgesForNode(
+  node: Pick<Partial<SigmaNodeAttributes>, "securityBadge" | "securitySeverity" | "updateBadge" | "updateType" | "versionStatus">
+): LabelBadge[] {
+  const securityBadge = securityBadgeForNode(node);
+  const versionBadge = versionBadgeForNode(node);
+  return [securityBadge, versionBadge ? { ...versionBadge, kind: "version" as const } : null].filter((badge): badge is LabelBadge => Boolean(badge));
+}
+
 export function versionBadgeForNode(node: Pick<Partial<SigmaNodeAttributes>, "updateBadge" | "updateType" | "versionStatus">): VersionBadge | null {
   if (!node.updateBadge || !node.updateType) {
     return null;
@@ -107,19 +142,44 @@ export function versionBadgeForNode(node: Pick<Partial<SigmaNodeAttributes>, "up
   };
 }
 
+function securityBadgeForNode(node: Pick<Partial<SigmaNodeAttributes>, "securityBadge" | "securitySeverity">): LabelBadge | null {
+  if (!node.securityBadge || !node.securitySeverity) {
+    return null;
+  }
+  return {
+    text: node.securityBadge,
+    kind: "security",
+    color: badgeColorForSeverity(node.securitySeverity)
+  };
+}
+
+function badgeColorForSeverity(severity: SecuritySeverity): BadgeColor {
+  if (severity === "critical") {
+    return { background: "#fecaca", border: "#f87171", text: "#7f1d1d" };
+  }
+  if (severity === "high") {
+    return { background: "#fee2e2", border: "#fca5a5", text: "#b91c1c" };
+  }
+  if (severity === "medium") {
+    return { background: "#fef3c7", border: "#fcd34d", text: "#b45309" };
+  }
+  return { background: "#dbeafe", border: "#93c5fd", text: "#1d4ed8" };
+}
+
 function drawBadge(
   context: CanvasRenderingContext2D,
   params: {
-    badge: VersionBadge;
+    badge: LabelBadge;
     labelX: number;
     labelY: number;
     labelWidth: number;
+    xOffset: number;
     size: number;
     font: string;
     weight: string;
   }
-): void {
-  const { badge, font, labelWidth, labelX, labelY, size, weight } = params;
+): number {
+  const { badge, font, labelWidth, labelX, labelY, size, weight, xOffset } = params;
   const badgeFontSize = Math.max(9, size - 2);
   const horizontalPadding = 6;
   const height = Math.max(16, badgeFontSize + 7);
@@ -127,7 +187,7 @@ function drawBadge(
 
   context.font = `${weight} ${badgeFontSize}px ${font}`;
   const badgeWidth = Math.max(18, context.measureText(badge.text).width + horizontalPadding * 2);
-  const x = labelX + labelWidth + gap;
+  const x = labelX + labelWidth + xOffset;
   const y = labelY - height + 4;
   const radius = height / 2;
 
@@ -144,6 +204,7 @@ function drawBadge(
   context.fillText(badge.text, x + badgeWidth / 2, y + height / 2 + 0.5);
   context.textAlign = "start";
   context.textBaseline = "alphabetic";
+  return xOffset + badgeWidth + gap;
 }
 
 function roundedRect(context: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number): void {

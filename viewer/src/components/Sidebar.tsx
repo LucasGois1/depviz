@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { AlertTriangle, Boxes, GitFork, Info } from "lucide-react";
-import type { Adjacency, DepvizDocument, FilterState, GraphNode, VersionSummary, VisibilityState } from "../types";
+import type { Adjacency, DepvizDocument, FilterState, GraphNode, SecuritySummary, VersionSummary, VisibilityState } from "../types";
 import { DetailsPanel } from "./DetailsPanel";
 import { DiagnosticsPanel } from "./DiagnosticsPanel";
 import { PathsPanel } from "./PathsPanel";
@@ -58,6 +58,13 @@ export function Sidebar({
         {document.versionSummary?.enabled ? (
           <div className="version-summary" aria-label="Version summary">
             {versionSummaryStats(document.versionSummary).map((stat) => (
+              <SummaryStat key={stat.label} label={stat.label} value={stat.value} />
+            ))}
+          </div>
+        ) : null}
+        {document.securitySummary?.enabled ? (
+          <div className="security-summary" aria-label="Security summary">
+            {securitySummaryStats(document.securitySummary).map((stat) => (
               <SummaryStat key={stat.label} label={stat.label} value={stat.value} />
             ))}
           </div>
@@ -122,5 +129,17 @@ export function versionSummaryStats(summary: VersionSummary): Array<{ label: str
     { label: "Patch", value: summary.patch },
     { label: "Unknown", value: summary.unknown },
     { label: "Unavailable", value: summary.unavailable }
+  ];
+}
+
+export function securitySummaryStats(summary: SecuritySummary): Array<{ label: string; value: number }> {
+  return [
+    { label: "Vulnerable", value: summary.vulnerableNodes },
+    { label: "Modules", value: summary.affectedModules },
+    { label: "Critical", value: summary.critical },
+    { label: "High", value: summary.high },
+    { label: "Medium", value: summary.medium },
+    { label: "Low", value: summary.low },
+    { label: "Unmapped", value: summary.unmappedFindings }
   ];
 }

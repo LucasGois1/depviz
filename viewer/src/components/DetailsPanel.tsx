@@ -1,8 +1,8 @@
 import { Check, ChevronRight, Clipboard, Package, Split, X } from "lucide-react";
 import { useState } from "react";
 import { copyTextToClipboard, type ClipboardCopyState } from "../clipboard";
-import { badgeTextForVersionInsight } from "../sigmaLabelRenderer";
-import type { Adjacency, FilterState, GraphNode, VersionInsight } from "../types";
+import { badgeTextForVersionInsight, securityBadgeText } from "../sigmaLabelRenderer";
+import type { Adjacency, FilterState, GraphNode, SecurityFinding, SecurityInsight, SecuritySeverity, VersionInsight } from "../types";
 import { Button } from "./ui/button";
 
 interface DetailsPanelProps {
@@ -87,6 +87,7 @@ export function DetailsPanel({ adjacency, nodeById, selectedNode, filters, onSel
       </section>
 
       {selectedNode.versionInsight ? <VersionSection insight={selectedNode.versionInsight} /> : null}
+      {selectedNode.securityInsight ? <SecuritySection insight={selectedNode.securityInsight} /> : null}
 
       <NeighborList title="Depended on by" nodes={parents} empty="No visible parents. This is a root or detached node." onSelectNode={onSelectNode} />
       <NeighborList title="Depends on" nodes={children} empty="No child dependencies recorded." onSelectNode={onSelectNode} />
@@ -129,6 +130,68 @@ function VersionSection({ insight }: { insight: VersionInsight }) {
       {insight.status === "unavailable" && insight.message ? <p className="version-message">{insight.message}</p> : null}
     </section>
   );
+}
+
+function SecuritySection({ insight }: { insight: SecurityInsight }) {
+  const badge = securityBadgeText(insight);
+
+  return (
+    <section className="security-section">
+      <div className="section-title-row">
+        <h3>Security</h3>
+        {badge ? <span className={`security-badge security-badge-${insight.maxSeverity}`}>{badge}</span> : null}
+      </div>
+      <div className="security-grid">
+        <Property label="Max severity" value={insight.maxSeverity} />
+        <Property label="Findings" value={String(insight.vulnerabilityCount)} />
+        <Property label="Critical" value={String(insight.critical)} />
+        <Property label="High" value={String(insight.high)} />
+        <Property label="Medium" value={String(insight.medium)} />
+        <Property label="Low" value={String(insight.low)} />
+      </div>
+      {insight.findings.length > 0 ? (
+        <div className="security-findings" aria-label="Security findings">
+          {insight.findings.map((finding) => (
+            <SecurityFindingCard key={finding.id} finding={finding} />
+          ))}
+        </div>
+      ) : (
+        <p className="muted-row">No security findings recorded for this dependency.</p>
+      )}
+    </section>
+  );
+}
+
+function SecurityFindingCard({ finding }: { finding: SecurityFinding }) {
+  return (
+    <article className={`security-finding security-finding-${finding.severity}`}>
+      <header>
+        <div>
+          <h4>{finding.title}</h4>
+          <span>{finding.id}</span>
+        </div>
+        <span className={`security-badge security-badge-${finding.severity}`}>{severityLabel(finding.severity)}</span>
+      </header>
+      <div className="security-finding-grid">
+        <Property label="Package" value={finding.packageName} />
+        <Property label="Version" value={finding.version} />
+        <Property label="Fixed versions" value={finding.fixedVersions.length > 0 ? finding.fixedVersions.join(", ") : "-"} />
+      </div>
+    </article>
+  );
+}
+
+function severityLabel(severity: SecuritySeverity): string {
+  if (severity === "critical") {
+    return "critical";
+  }
+  if (severity === "high") {
+    return "high";
+  }
+  if (severity === "medium") {
+    return "medium";
+  }
+  return "low";
 }
 
 export function versionStatusText(insight: VersionInsight): string {

@@ -1,8 +1,8 @@
 import { MultiDirectedGraph } from "graphology";
 import circular from "graphology-layout/circular";
 import { dependencyFanIn } from "./graph";
-import { badgeTextForVersionInsight } from "./sigmaLabelRenderer";
-import type { Adjacency, DepvizDocument, GraphEdge, GraphNode, LayoutName, VersionInsight, VisibilityState } from "./types";
+import { badgeTextForVersionInsight, securityBadgeText } from "./sigmaLabelRenderer";
+import type { Adjacency, DepvizDocument, GraphEdge, GraphNode, LayoutName, SecuritySeverity, VersionInsight, VisibilityState } from "./types";
 
 export type SigmaVersionUpdateType = VersionInsight["updateType"];
 
@@ -36,6 +36,8 @@ export interface SigmaNodeAttributes {
   versionStatus?: VersionInsight["status"];
   updateType?: SigmaVersionUpdateType;
   updateBadge?: string;
+  securitySeverity?: SecuritySeverity;
+  securityBadge?: string;
   zIndex: number;
 }
 
@@ -124,7 +126,8 @@ export function applySigmaGraphState(graph: SigmaDependencyGraph, params: SigmaG
     const matched = visibility.matchingNodeIds.has(nodeId);
     const keyLabel = attributes.root || attributes.shared || attributes.depth <= 1;
     const versionLabel = attributes.versionStatus === "outdated" || attributes.versionStatus === "unavailable";
-    const forceLabel = selected || matched || keyLabel || versionLabel;
+    const securityLabel = Boolean(attributes.securityBadge);
+    const forceLabel = selected || matched || keyLabel || versionLabel || securityLabel;
     const labelVisible = showLabels || forceLabel;
 
     graph.mergeNodeAttributes(nodeId, {
@@ -185,7 +188,10 @@ function toSigmaNodeAttributes(node: GraphNode, fanIn: number): SigmaNodeAttribu
   const updateBadge = badgeTextForVersionInsight(node.versionInsight ?? null) ?? undefined;
   const versionStatus = node.versionInsight?.status;
   const updateType = node.versionInsight?.updateType;
-  const forceLabel = node.root || shared || node.depth <= 1 || versionStatus === "outdated" || versionStatus === "unavailable";
+  const securityBadge = securityBadgeText(node.securityInsight ?? null) ?? undefined;
+  const securitySeverity = securityBadge ? node.securityInsight?.maxSeverity : undefined;
+  const forceLabel =
+    node.root || shared || node.depth <= 1 || versionStatus === "outdated" || versionStatus === "unavailable" || Boolean(securityBadge);
 
   return {
     id: node.id,
@@ -217,6 +223,8 @@ function toSigmaNodeAttributes(node: GraphNode, fanIn: number): SigmaNodeAttribu
     ...(versionStatus ? { versionStatus } : {}),
     ...(node.versionInsight ? { updateType } : {}),
     ...(updateBadge ? { updateBadge } : {}),
+    ...(securitySeverity ? { securitySeverity } : {}),
+    ...(securityBadge ? { securityBadge } : {}),
     zIndex: node.root ? 20 : shared ? 12 : 1
   };
 }
