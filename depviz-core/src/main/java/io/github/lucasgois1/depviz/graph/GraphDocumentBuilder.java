@@ -20,9 +20,24 @@ public class GraphDocumentBuilder {
         return build(root, project, config, VersionCheckResult.empty(config.checkUpdates()));
     }
 
+    public GraphDocument build(DependencyGraphInput input, DepvizConfig config) {
+        Objects.requireNonNull(input, "input is required.");
+        Objects.requireNonNull(config, "config is required.");
+        return build(input.root(), input.project(), config);
+    }
+
     public GraphDocument build(DependencyNodeInput root, ProjectInfo project, DepvizConfig config) {
         Objects.requireNonNull(config, "config is required.");
         return build(root, project, config, VersionCheckResult.empty(config.checkUpdates()));
+    }
+
+    public GraphDocument build(
+        DependencyGraphInput input,
+        DepvizConfig config,
+        VersionCheckResult versionCheck
+    ) {
+        Objects.requireNonNull(input, "input is required.");
+        return build(input.root(), input.project(), config, versionCheck);
     }
 
     public GraphDocument build(

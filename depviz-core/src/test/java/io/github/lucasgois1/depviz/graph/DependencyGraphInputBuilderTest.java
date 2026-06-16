@@ -32,8 +32,7 @@ class DependencyGraphInputBuilderTest {
         );
 
         GraphDocument document = new GraphDocumentBuilder().build(
-            input.root(),
-            input.project(),
+            input,
             DepvizConfig.fromRaw(null, "false", null, null, null, null, null, null, Path.of("target/depviz"), "false", null, null, null, null),
             VersionCheckResult.disabled()
         );
@@ -43,5 +42,69 @@ class DependencyGraphInputBuilderTest {
             assertThat(edge.source()).isEqualTo("com.acme:app:jar::1.0.0");
             assertThat(edge.target()).isEqualTo("org.slf4j:slf4j-api:jar::2.0.13");
         });
+    }
+
+    @Test
+    void usesExplicitModuleRootWhenScopeIsNotModule() {
+        DependencyGraphInput input = input(new DependencyNodeInput(
+            new ArtifactCoordinate("com.acme", "api", "jar", "", "1.0.0"),
+            "runtime",
+            false,
+            true,
+            List.of(),
+            List.of()
+        ));
+
+        GraphDocument document = new GraphDocumentBuilder().build(input, defaultConfig(), VersionCheckResult.disabled());
+
+        assertThat(document.nodes()).singleElement().satisfies(node -> {
+            assertThat(node.scope()).isEqualTo("root");
+            assertThat(node.moduleRoot()).isTrue();
+        });
+    }
+
+    @Test
+    void doesNotInferModuleRootFromModuleScope() {
+        DependencyGraphInput input = input(new DependencyNodeInput(
+            new ArtifactCoordinate("com.acme", "api", "jar", "", "1.0.0"),
+            "module",
+            false,
+            false,
+            List.of(),
+            List.of()
+        ));
+
+        GraphDocument document = new GraphDocumentBuilder().build(input, defaultConfig(), VersionCheckResult.disabled());
+
+        assertThat(document.nodes()).singleElement().satisfies(node -> {
+            assertThat(node.scope()).isEqualTo("root");
+            assertThat(node.moduleRoot()).isFalse();
+        });
+    }
+
+    private static DependencyGraphInput input(DependencyNodeInput root) {
+        return new DependencyGraphInput(
+            root,
+            new ProjectInfo("com.acme", "app", "1.0.0", "jar", "app", "/tmp/app", false, List.of())
+        );
+    }
+
+    private static DepvizConfig defaultConfig() {
+        return DepvizConfig.fromRaw(
+            null,
+            "false",
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            Path.of("target/depviz"),
+            "false",
+            null,
+            null,
+            null,
+            null
+        );
     }
 }
