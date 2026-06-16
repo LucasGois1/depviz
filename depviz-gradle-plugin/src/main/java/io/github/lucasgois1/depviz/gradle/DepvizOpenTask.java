@@ -8,6 +8,9 @@ import io.github.lucasgois1.depviz.graph.ProjectInfo;
 import io.github.lucasgois1.depviz.output.BrowserOpener;
 import io.github.lucasgois1.depviz.output.OutputFiles;
 import io.github.lucasgois1.depviz.output.ViewerWriter;
+import io.github.lucasgois1.depviz.security.SecurityCheckResult;
+import io.github.lucasgois1.depviz.security.SecurityGraphEnricher;
+import io.github.lucasgois1.depviz.security.SnykRunner;
 import io.github.lucasgois1.depviz.version.VersionCheckResult;
 import java.io.IOException;
 import java.net.URI;
@@ -55,7 +58,9 @@ public abstract class DepvizOpenTask extends DefaultTask {
             !modules.isEmpty(),
             modules
         );
-        GraphDocument document = new GraphDocumentBuilder().build(root, projectInfo, config, VersionCheckResult.disabled());
+        GraphDocument initialDocument = new GraphDocumentBuilder().build(root, projectInfo, config, VersionCheckResult.disabled());
+        SecurityCheckResult securityCheck = new SnykRunner().run(config, project.getProjectDir().toPath());
+        GraphDocument document = new SecurityGraphEnricher().enrich(initialDocument, securityCheck);
         try {
             OutputFiles output = new ViewerWriter().write(document, config.outputDirectory());
             URI htmlUri = output.htmlFile().toAbsolutePath().normalize().toUri();

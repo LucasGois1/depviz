@@ -240,6 +240,48 @@ class DepvizGradlePluginTest {
             .containsExactly("testRuntimeClasspath");
     }
 
+    @Test
+    void enrichesGradleGraphFromSnykJson() throws Exception {
+        Files.writeString(projectDir.resolve("settings.gradle.kts"), "rootProject.name = \"snyk-gradle\"\n");
+        Files.writeString(projectDir.resolve("snyk-report.json"), """
+            {
+              "vulnerabilities": [
+                {
+                  "id": "SNYK-JAVA-ORGSLF4J-TEST-1",
+                  "severity": "high",
+                  "packageName": "org.slf4j:slf4j-api",
+                  "version": "2.0.13",
+                  "fixedIn": ["2.0.17"]
+                }
+              ]
+            }
+            """);
+        Files.writeString(projectDir.resolve("build.gradle.kts"), """
+            plugins {
+                java
+                id("io.github.lucasgois1.depviz")
+            }
+            repositories { mavenCentral() }
+            dependencies { runtimeOnly("org.slf4j:slf4j-api:2.0.13") }
+            depviz {
+                open.set(false)
+                snyk.set("auto")
+                snykJson.set(project.layout.projectDirectory.file("snyk-report.json"))
+            }
+            """);
+
+        GradleRunner.create()
+            .withProjectDir(projectDir.toFile())
+            .withPluginClasspath()
+            .withArguments("depvizOpen", "--stacktrace")
+            .build();
+
+        String text = Files.readString(projectDir.resolve("build/depviz/dependency-graph.json"));
+        assertThat(text).contains("\"securitySummary\"");
+        assertThat(text).contains("\"high\" : 1");
+        assertThat(text).contains("SNYK-JAVA-ORGSLF4J-TEST-1");
+    }
+
     private static JsonNode rootNode(JsonNode document) {
         List<JsonNode> matches = new ArrayList<>();
         for (JsonNode node : document.path("nodes")) {
