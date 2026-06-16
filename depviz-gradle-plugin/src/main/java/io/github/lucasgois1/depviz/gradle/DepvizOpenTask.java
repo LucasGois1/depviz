@@ -59,7 +59,7 @@ public abstract class DepvizOpenTask extends DefaultTask {
             modules
         );
         GraphDocument initialDocument = new GraphDocumentBuilder().build(root, projectInfo, config, VersionCheckResult.disabled());
-        SecurityCheckResult securityCheck = new SnykRunner().run(config, project.getProjectDir().toPath());
+        SecurityCheckResult securityCheck = new SnykRunner().run(config, rootProject.getProjectDir().toPath());
         GraphDocument document = new SecurityGraphEnricher().enrich(initialDocument, securityCheck);
         try {
             OutputFiles output = new ViewerWriter().write(document, config.outputDirectory());

@@ -74,6 +74,7 @@ class DepvizGradlePluginTest {
             depviz {
                 open.set(false)
                 scope.set(" Runtime ")
+                snyk.set("false")
             }
             """);
 
@@ -113,7 +114,10 @@ class DepvizGradlePluginTest {
                     "runtimeOnly"("org.slf4j:slf4j-api:2.0.13")
                 }
             }
-            depviz { open.set(false) }
+            depviz {
+                open.set(false)
+                snyk.set("false")
+            }
             """);
         Files.writeString(projectDir.resolve("api/build.gradle.kts"), "");
         Files.writeString(projectDir.resolve("worker/build.gradle.kts"), "");
@@ -164,6 +168,7 @@ class DepvizGradlePluginTest {
             depviz {
                 scope.set("compile")
                 open.set(false)
+                snyk.set("false")
             }
             """);
 
@@ -190,6 +195,7 @@ class DepvizGradlePluginTest {
             depviz {
                 outputDirectory.set(project.layout.projectDirectory.dir("custom-depviz"))
                 open.set(false)
+                snyk.set("false")
             }
             """);
 
@@ -218,6 +224,7 @@ class DepvizGradlePluginTest {
             depviz {
                 scope.set("all")
                 open.set(false)
+                snyk.set("false")
             }
             """);
 
@@ -276,10 +283,18 @@ class DepvizGradlePluginTest {
             .withArguments("depvizOpen", "--stacktrace")
             .build();
 
-        String text = Files.readString(projectDir.resolve("build/depviz/dependency-graph.json"));
-        assertThat(text).contains("\"securitySummary\"");
-        assertThat(text).contains("\"high\" : 1");
-        assertThat(text).contains("SNYK-JAVA-ORGSLF4J-TEST-1");
+        JsonNode document = OBJECT_MAPPER.readTree(Files.readString(projectDir.resolve("build/depviz/dependency-graph.json")));
+        JsonNode securitySummary = document.path("securitySummary");
+        JsonNode slf4jApi = onlyNodeByArtifactId(document, "slf4j-api");
+        JsonNode findings = slf4jApi.path("securityInsight").path("findings");
+
+        assertThat(securitySummary.path("enabled").asBoolean()).isTrue();
+        assertThat(securitySummary.path("checked").asBoolean()).isTrue();
+        assertThat(securitySummary.path("source").asText()).isEqualTo("snyk");
+        assertThat(securitySummary.path("high").asInt()).isEqualTo(1);
+        assertThat(securitySummary.path("unmappedFindings").asInt()).isZero();
+        assertThat(findings).hasSize(1);
+        assertThat(findings.get(0).path("id").asText()).isEqualTo("SNYK-JAVA-ORGSLF4J-TEST-1");
     }
 
     private static JsonNode rootNode(JsonNode document) {
