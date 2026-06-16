@@ -10,12 +10,20 @@ public final class Main {
     private Main() {}
 
     public static void main(String[] args) {
-        int exitCode = runMain(args, Path.of("").toAbsolutePath().normalize(), System.console() != null, System.err);
+        int exitCode = runMain(args, Path.of("").toAbsolutePath().normalize(), System.console() != null, System.out, System.err);
         System.exit(exitCode);
     }
 
     static int runMain(String[] args, Path currentDirectory, boolean interactive, PrintStream err) {
+        return runMain(args, currentDirectory, interactive, System.out, err);
+    }
+
+    static int runMain(String[] args, Path currentDirectory, boolean interactive, PrintStream out, PrintStream err) {
         try {
+            if (isVersionRequest(args)) {
+                out.println("depviz " + resolveVersion());
+                return 0;
+            }
             return run(args, currentDirectory, interactive);
         } catch (IllegalArgumentException exception) {
             err.println(exception.getMessage());
@@ -28,6 +36,10 @@ public final class Main {
             err.println("Unexpected error: " + message);
             return 1;
         }
+    }
+
+    private static boolean isVersionRequest(String[] args) {
+        return args.length == 1 && ("--version".equals(args[0]) || "-v".equals(args[0]));
     }
 
     static int run(String[] args, Path currentDirectory, boolean interactive) throws Exception {

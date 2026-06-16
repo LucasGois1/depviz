@@ -71,6 +71,58 @@ class MainTest {
     }
 
     @Test
+    void printsVersionWithoutInspectingProject() {
+        ByteArrayOutputStream stdout = new ByteArrayOutputStream();
+        ByteArrayOutputStream stderr = new ByteArrayOutputStream();
+        String previous = System.setProperty("depviz.version", "9.8.7");
+        try {
+            int exitCode = Main.runMain(
+                new String[] {"--version"},
+                dir,
+                false,
+                new PrintStream(stdout, true, StandardCharsets.UTF_8),
+                new PrintStream(stderr, true, StandardCharsets.UTF_8)
+            );
+
+            assertThat(exitCode).isEqualTo(0);
+            assertThat(stdout.toString(StandardCharsets.UTF_8)).isEqualTo("depviz 9.8.7\n");
+            assertThat(stderr.toString(StandardCharsets.UTF_8)).isEmpty();
+        } finally {
+            if (previous == null) {
+                System.clearProperty("depviz.version");
+            } else {
+                System.setProperty("depviz.version", previous);
+            }
+        }
+    }
+
+    @Test
+    void printsVersionWithShortOption() {
+        ByteArrayOutputStream stdout = new ByteArrayOutputStream();
+        ByteArrayOutputStream stderr = new ByteArrayOutputStream();
+        String previous = System.setProperty("depviz.version", "9.8.7");
+        try {
+            int exitCode = Main.runMain(
+                new String[] {"-v"},
+                dir,
+                false,
+                new PrintStream(stdout, true, StandardCharsets.UTF_8),
+                new PrintStream(stderr, true, StandardCharsets.UTF_8)
+            );
+
+            assertThat(exitCode).isEqualTo(0);
+            assertThat(stdout.toString(StandardCharsets.UTF_8)).isEqualTo("depviz 9.8.7\n");
+            assertThat(stderr.toString(StandardCharsets.UTF_8)).isEmpty();
+        } finally {
+            if (previous == null) {
+                System.clearProperty("depviz.version");
+            } else {
+                System.setProperty("depviz.version", previous);
+            }
+        }
+    }
+
+    @Test
     void fallsBackToSnapshotVersionWhenManifestVersionIsUnavailable() {
         String previous = System.clearProperty("depviz.version");
         try {
