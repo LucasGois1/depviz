@@ -27,7 +27,7 @@ rm -rf "$DIST_DIR"
 mkdir -p "$DIST_DIR"
 
 cp "$CLI_JAR" "$DIST_DIR/depviz-cli.jar"
-cp scripts/install.sh "$DIST_DIR/install.sh"
+sed "s|^VERSION=.*|VERSION=\"\${DEPVIZ_VERSION:-$VERSION}\"|" scripts/install.sh > "$DIST_DIR/install.sh"
 chmod +x "$DIST_DIR/install.sh"
 
 copy_maven_artifact() {
