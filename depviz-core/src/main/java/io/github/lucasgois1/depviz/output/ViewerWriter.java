@@ -82,14 +82,19 @@ public class ViewerWriter {
     }
 
     private static InputStream resourceStream(String resource) {
-        ClassLoader loader = Thread.currentThread().getContextClassLoader();
-        if (loader != null) {
-            InputStream inputStream = loader.getResourceAsStream(resource);
+        ClassLoader coreLoader = ViewerWriter.class.getClassLoader();
+        if (coreLoader != null) {
+            InputStream inputStream = coreLoader.getResourceAsStream(resource);
             if (inputStream != null) {
                 return inputStream;
             }
         }
-        return ViewerWriter.class.getClassLoader().getResourceAsStream(resource);
+
+        ClassLoader contextLoader = Thread.currentThread().getContextClassLoader();
+        if (contextLoader == null || contextLoader == coreLoader) {
+            return null;
+        }
+        return contextLoader.getResourceAsStream(resource);
     }
 
     private static String assetReference(Path assetsDirectory, String asset) throws IOException {
