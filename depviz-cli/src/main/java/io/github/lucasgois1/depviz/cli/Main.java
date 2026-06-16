@@ -33,7 +33,7 @@ public final class Main {
     static int run(String[] args, Path currentDirectory, boolean interactive) throws Exception {
         CliOptions options = CliOptions.parse(args, currentDirectory).withDefaultOpen(interactive);
         ProjectDetector.DetectionResult detection = ProjectDetector.detect(options.projectDir());
-        BuildTool tool = selectTool(options, detection, interactive);
+        BuildTool tool = selectTool(options, detection, interactive, new ConsolePrompter(System.in, System.out));
         CommandRunner runner = new CommandRunner();
         if (tool == BuildTool.MAVEN) {
             List<String> command = new MavenCommandFactory(VERSION).command(options, ExecutableSelector.maven(options.projectDir()));
@@ -43,7 +43,12 @@ public final class Main {
         return runner.run(options.projectDir(), new GradleCommandFactory().command(ExecutableSelector.gradle(options.projectDir()), initScript));
     }
 
-    private static BuildTool selectTool(CliOptions options, ProjectDetector.DetectionResult detection, boolean interactive) {
+    static BuildTool selectTool(
+        CliOptions options,
+        ProjectDetector.DetectionResult detection,
+        boolean interactive,
+        ConsolePrompter prompter
+    ) {
         if (options.tool() != null) {
             if (!detection.tools().contains(options.tool())) {
                 throw new IllegalArgumentException("Requested build tool was not detected in " + options.projectDir());
@@ -63,6 +68,6 @@ public final class Main {
         if (!interactive) {
             throw new IllegalArgumentException("Both Maven and Gradle were detected. Re-run with --tool maven or --tool gradle.");
         }
-        throw new IllegalArgumentException("Both Maven and Gradle were detected. Re-run with --tool maven or --tool gradle.");
+        return prompter.chooseBuildTool();
     }
 }
