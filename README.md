@@ -1,3 +1,5 @@
+[![Quality gate](https://sonarcloud.io/api/project_badges/quality_gate?project=LucasGois1_depgraph)](https://sonarcloud.io/summary/new_code?id=LucasGois1_depgraph)
+
 # Depviz
 
 Depviz generates an offline interactive dependency graph for Java projects.
