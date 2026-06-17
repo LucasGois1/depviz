@@ -17,7 +17,7 @@ jobs:
     name: Verify Maven and Gradle
     runs-on: ubuntu-latest
     env:
-      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN || secrets.SONARCLOUD_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -43,8 +43,32 @@ jobs:
       - name: Gradle plugin tests
         run: ./gradlew :depviz-gradle-plugin:test --rerun-tasks --no-daemon
 
+      - name: Verify coverage reports
+        run: |
+          reports=(
+            "depviz-core/target/site/jacoco/jacoco.xml"
+            "depviz-maven-plugin/target/site/jacoco/jacoco.xml"
+            "depviz-cli/target/site/jacoco/jacoco.xml"
+            "depviz-gradle-plugin/build/reports/jacoco/test/jacocoTestReport.xml"
+            "viewer/coverage/lcov.info"
+          )
+
+          for report in "${reports[@]}"; do
+            if [ ! -s "$report" ]; then
+              echo "::error file=$report::Coverage report was not generated or is empty"
+              exit 1
+            fi
+            wc -c "$report"
+          done
+
+      - name: Require Sonar token
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          if [ -z "$SONAR_TOKEN" ]; then
+            echo "::error::Set SONAR_TOKEN or SONARCLOUD_TOKEN in GitHub repository secrets so CI can publish coverage to SonarCloud."
+            exit 1
+          fi
+
       - name: Sonar scan
-        if: env.SONAR_TOKEN != ''
-        uses: SonarSource/sonarqube-scan-action@v6
-        env:
-          SONAR_TOKEN: ${{ env.SONAR_TOKEN }}
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: SonarSource/sonarqube-scan-action@v7
