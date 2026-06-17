@@ -140,7 +140,7 @@ describe("toSigmaGraph", () => {
     expect(versionNode.baseSize).toBe(plainGraph.getNodeAttribute(versionNodeId, "baseSize"));
   });
 
-  it("forces unavailable dependency labels while leaving current dependencies on normal label rules", () => {
+  it("keeps unavailable dependency badge metadata while respecting disabled labels", () => {
     const unavailableNodeId = "org.beta:service:jar::1.0.0";
     const currentNodeId = sharedTargetId;
     const versionDocument: DepvizDocument = {
@@ -188,6 +188,7 @@ describe("toSigmaGraph", () => {
 
     expect(graph.getNodeAttributes(unavailableNodeId)).toMatchObject({
       label: "service",
+      labelTextVisible: false,
       forceLabel: true,
       versionStatus: "unavailable",
       updateType: "unknown",
@@ -199,7 +200,7 @@ describe("toSigmaGraph", () => {
     expect(graph.getNodeAttribute(currentNodeId, "forceLabel")).toBe(true);
   });
 
-  it("serializes vulnerable security badge attributes and forces labels through graph state", () => {
+  it("serializes vulnerable security badge attributes while respecting disabled labels", () => {
     const vulnerableNodeId = "org.security:vulnerable-helper:jar::1.0.0";
     const securityDocument: DepvizDocument = {
       ...document,
@@ -240,6 +241,7 @@ describe("toSigmaGraph", () => {
 
     expect(graph.getNodeAttributes(vulnerableNodeId)).toMatchObject({
       label: "vulnerable-helper",
+      labelTextVisible: false,
       forceLabel: true,
       securitySeverity: "high",
       securityBadge: "H"
@@ -299,7 +301,7 @@ describe("toSigmaGraph", () => {
     expect(projectedMinimumNodeGap(graph)).toBeGreaterThan(0);
   });
 
-  it("limits forced labels in dense graphs to high-signal nodes", () => {
+  it("tracks forced label metadata in dense graphs without rendering labels when disabled", () => {
     const denseDocument = denseSharedDependencyDocument(96);
     const graph = toSigmaGraph(denseDocument, "force");
     const adjacency = buildAdjacency(denseDocument);
@@ -312,8 +314,10 @@ describe("toSigmaGraph", () => {
     applySigmaGraphState(graph, { adjacency, visibility, selectedNodeId: null, showLabels: false });
 
     const labeledNodes = graph.nodes().filter((nodeId) => graph.getNodeAttribute(nodeId, "label"));
-    expect(labeledNodes.length).toBeLessThan(30);
-    expect(labeledNodes).toContain("dev.example:dense-demo:jar::1.0.0");
+    const forceLabeledNodes = graph.nodes().filter((nodeId) => graph.getNodeAttribute(nodeId, "forceLabel"));
+    expect(labeledNodes).toEqual([]);
+    expect(forceLabeledNodes.length).toBeLessThan(30);
+    expect(forceLabeledNodes).toContain("dev.example:dense-demo:jar::1.0.0");
   });
 
   it("lays out dense flow graphs as a left-to-right dependency map instead of a vertical stack", () => {
@@ -419,6 +423,43 @@ describe("toSigmaGraph", () => {
 });
 
 describe("applySigmaGraphState", () => {
+  it("hides canvas label text when label rendering is disabled", () => {
+    const graph = toSigmaGraph(document, "force");
+    const adjacency = buildAdjacency(document);
+    const visibility: VisibilityState = {
+      visibleNodeIds: new Set(document.nodes.map((current) => current.id)),
+      visibleEdgeIds: new Set(document.edges.map((current) => current.id)),
+      matchingNodeIds: new Set([sharedTargetId])
+    };
+
+    applySigmaGraphState(graph, { adjacency, visibility, selectedNodeId: sharedTargetId, showLabels: false });
+
+    expect(graph.getNodeAttribute(sharedTargetId, "forceLabel")).toBe(true);
+    expect(graph.nodes().every((id) => graph.getNodeAttribute(id, "label") === "")).toBe(true);
+  });
+
+  it("stores independent badge visibility in node attributes", () => {
+    const graph = toSigmaGraph(document, "force");
+    const adjacency = buildAdjacency(document);
+    const visibility: VisibilityState = {
+      visibleNodeIds: new Set(document.nodes.map((current) => current.id)),
+      visibleEdgeIds: new Set(document.edges.map((current) => current.id)),
+      matchingNodeIds: new Set()
+    };
+
+    applySigmaGraphState(graph, {
+      adjacency,
+      visibility,
+      selectedNodeId: null,
+      showLabels: true,
+      showVersionBadges: false,
+      showSecurityBadges: true
+    });
+
+    expect(graph.getNodeAttribute(sharedTargetId, "versionBadgeVisible")).toBe(false);
+    expect(graph.getNodeAttribute(sharedTargetId, "securityBadgeVisible")).toBe(true);
+  });
+
   it("dims non-neighbors and keeps the selected neighborhood emphasized", () => {
     const graph = toSigmaGraph(document, "force");
     const adjacency = buildAdjacency(document);

@@ -99,11 +99,34 @@ describe("badgesForNode", () => {
       {
         text: "H",
         kind: "security",
+        shape: "octagon",
         color: { background: "#4a1620", border: "#fb7185", text: "#fecdd3" }
       },
       {
         text: "P",
         kind: "version",
+        shape: "pill",
+        color: { background: "#0f3d3a", border: "#2dd4bf", text: "#99f6e4" }
+      }
+    ]);
+  });
+
+  it("respects independent badge visibility flags", () => {
+    expect(
+      badgesForNode({
+        securityBadge: "H",
+        securitySeverity: "high",
+        securityBadgeVisible: false,
+        updateBadge: "P",
+        updateType: "patch",
+        versionStatus: "outdated",
+        versionBadgeVisible: true
+      })
+    ).toEqual([
+      {
+        text: "P",
+        kind: "version",
+        shape: "pill",
         color: { background: "#0f3d3a", border: "#2dd4bf", text: "#99f6e4" }
       }
     ]);
@@ -151,6 +174,19 @@ describe("drawDependencyNodeLabel", () => {
     expect(context.beginPath).toHaveBeenCalled();
     expect(context.fill).toHaveBeenCalled();
     expect(context.stroke).toHaveBeenCalled();
+    expect(context.fillText).toHaveBeenCalledWith("M", expect.any(Number), expect.any(Number));
+  });
+
+  it("draws badges without drawing label text when label text is hidden", () => {
+    const context = canvasContext();
+
+    drawDependencyNodeLabel(
+      context,
+      { label: "client", labelTextVisible: false, x: 100, y: 50, size: 7, updateType: "major", updateBadge: "M" } as SigmaNodeAttributes,
+      labelSettings()
+    );
+
+    expect(context.strokeText).not.toHaveBeenCalled();
     expect(context.fillText).toHaveBeenCalledWith("M", expect.any(Number), expect.any(Number));
   });
 
