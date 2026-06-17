@@ -31,7 +31,8 @@ class GradleInitScriptWriterTest {
 
         Path script = new GradleInitScriptWriter("0.1.0-SNAPSHOT").write(tempDir, options);
 
-        assertThat(script.normalize().startsWith(tempDir.normalize())).isFalse();
+        assertThat(script.normalize()).startsWith(tempDir.normalize());
+        assertThat(script.getFileName().toString()).startsWith("depviz-").endsWith(".gradle");
         String text = Files.readString(script);
         assertThat(text).contains("classpath 'io.github.lucasgois1.depviz:depviz-gradle-plugin:0.1.0-SNAPSHOT'");
         assertThat(text).contains("project.apply plugin: io.github.lucasgois1.depviz.gradle.DepvizGradlePlugin");

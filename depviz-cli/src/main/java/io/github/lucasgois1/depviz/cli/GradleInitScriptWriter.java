@@ -3,8 +3,17 @@ package io.github.lucasgois1.depviz.cli;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileAttribute;
+import java.nio.file.attribute.PosixFilePermission;
+import java.nio.file.attribute.PosixFilePermissions;
+import java.util.Set;
 
 public final class GradleInitScriptWriter {
+    private static final FileAttribute<Set<PosixFilePermission>> OWNER_ONLY_DIRECTORY =
+        PosixFilePermissions.asFileAttribute(Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE, PosixFilePermission.OWNER_EXECUTE));
+    private static final FileAttribute<Set<PosixFilePermission>> OWNER_READ_WRITE =
+        PosixFilePermissions.asFileAttribute(Set.of(PosixFilePermission.OWNER_READ, PosixFilePermission.OWNER_WRITE));
+
     private final String version;
 
     public GradleInitScriptWriter(String version) {
@@ -12,10 +21,29 @@ public final class GradleInitScriptWriter {
     }
 
     public Path write(Path directory, CliOptions options) throws IOException {
-        Path script = Files.createTempFile("depviz-", ".gradle");
+        Path scriptDirectory = createPrivateTempDirectory(directory);
+        scriptDirectory.toFile().deleteOnExit();
+        Path script = createPrivateTempFile(scriptDirectory);
         script.toFile().deleteOnExit();
         Files.writeString(script, scriptText(options));
         return script;
+    }
+
+    private static Path createPrivateTempDirectory(Path directory) throws IOException {
+        Path baseDirectory = directory.toAbsolutePath().normalize();
+        try {
+            return Files.createTempDirectory(baseDirectory, ".depviz-", OWNER_ONLY_DIRECTORY);
+        } catch (UnsupportedOperationException ignored) {
+            return Files.createTempDirectory(baseDirectory, ".depviz-");
+        }
+    }
+
+    private static Path createPrivateTempFile(Path directory) throws IOException {
+        try {
+            return Files.createTempFile(directory, "depviz-", ".gradle", OWNER_READ_WRITE);
+        } catch (UnsupportedOperationException ignored) {
+            return Files.createTempFile(directory, "depviz-", ".gradle");
+        }
     }
 
     private String scriptText(CliOptions options) {
