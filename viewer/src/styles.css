@@ -716,8 +716,10 @@ svg {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   border-radius: 8px;
+  scrollbar-gutter: stable;
 }
 
 .summary-card {
@@ -864,8 +866,7 @@ svg {
 
 .tabs {
   display: flex;
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 0 0 auto;
   flex-direction: column;
 }
 
@@ -905,9 +906,8 @@ svg {
 }
 
 .tabs-content {
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
+  flex: 0 0 auto;
+  overflow: visible;
   padding: 14px;
 }
 
