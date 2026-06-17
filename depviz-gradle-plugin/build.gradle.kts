@@ -1,5 +1,6 @@
 plugins {
     `java-gradle-plugin`
+    jacoco
     `maven-publish`
     id("com.gradle.plugin-publish") version "2.1.1"
 }
@@ -40,4 +41,14 @@ gradlePlugin {
 
 tasks.test {
     useJUnitPlatform()
+    finalizedBy(tasks.jacocoTestReport)
+}
+
+tasks.jacocoTestReport {
+    dependsOn(tasks.test)
+    reports {
+        xml.required.set(true)
+        html.required.set(false)
+        csv.required.set(false)
+    }
 }

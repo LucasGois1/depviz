@@ -5,6 +5,7 @@ build/
 .superpowers/
 node_modules/
 viewer/node_modules/
+viewer/coverage/
 viewer/dist/
 dist/
 .DS_Store

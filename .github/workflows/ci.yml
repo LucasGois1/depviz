@@ -10,14 +10,19 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 jobs:
   verify:
     name: Verify Maven and Gradle
     runs-on: ubuntu-latest
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Java
         uses: actions/setup-java@v4
@@ -37,3 +42,9 @@ jobs:
 
       - name: Gradle plugin tests
         run: ./gradlew :depviz-gradle-plugin:test --rerun-tasks --no-daemon
+
+      - name: Sonar scan
+        if: env.SONAR_TOKEN != ''
+        uses: SonarSource/sonarqube-scan-action@v6
+        env:
+          SONAR_TOKEN: ${{ env.SONAR_TOKEN }}

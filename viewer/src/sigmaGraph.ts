@@ -139,6 +139,8 @@ export function applySigmaGraphState(graph: SigmaDependencyGraph, params: SigmaG
     const visible = visibility.visibleNodeIds.has(nodeId);
     const selected = selectedNodeId === nodeId;
     const neighbor = Boolean(selectedNeighborhood?.has(nodeId));
+    const selectionActive = Boolean(selectedNeighborhood);
+    const selectionLabelVisible = selectionActive && visible && neighbor;
     const dimmed = Boolean(selectedNodeId && !neighbor);
     const matched = visibility.matchingNodeIds.has(nodeId);
     const searchContext = searchActive && visible && !matched;
@@ -146,15 +148,17 @@ export function applySigmaGraphState(graph: SigmaDependencyGraph, params: SigmaG
     const keyLabel = attributes.root || attributes.moduleRoot || hubLabel || (!denseGraph && (attributes.shared || attributes.depth <= 1));
     const versionLabel = attributes.versionStatus === "outdated" || attributes.versionStatus === "unavailable";
     const securityLabel = Boolean(attributes.securityBadge);
-    const forceLabel = selected || matched || keyLabel || versionLabel || securityLabel;
+    const forceLabel = selectionActive ? selectionLabelVisible : selected || matched || keyLabel || versionLabel || securityLabel;
     const visibleBadge = (showVersionBadges && Boolean(attributes.updateBadge)) || (showSecurityBadges && Boolean(attributes.securityBadge));
+    const labelTextVisible = selectionActive ? selectionLabelVisible : showLabels;
+    const labelVisible = selectionActive ? selectionLabelVisible : showLabels || visibleBadge;
 
     graph.mergeNodeAttributes(nodeId, {
       hidden: !visible,
       highlighted: selected || matched,
       color: dimmed ? "rgba(71, 85, 105, 0.3)" : matched && !selected ? "#fbbf24" : searchContext ? searchContextNodeColor(attributes) : attributes.baseColor,
-      label: showLabels || visibleBadge ? attributes.baseLabel : "",
-      labelTextVisible: showLabels,
+      label: labelVisible ? attributes.baseLabel : "",
+      labelTextVisible,
       forceLabel,
       versionBadgeVisible: showVersionBadges,
       securityBadgeVisible: showSecurityBadges,

@@ -423,7 +423,7 @@ describe("toSigmaGraph", () => {
 });
 
 describe("applySigmaGraphState", () => {
-  it("hides canvas label text when label rendering is disabled", () => {
+  it("hides canvas label text when label rendering is disabled without a selection", () => {
     const graph = toSigmaGraph(document, "force");
     const adjacency = buildAdjacency(document);
     const visibility: VisibilityState = {
@@ -432,10 +432,40 @@ describe("applySigmaGraphState", () => {
       matchingNodeIds: new Set([sharedTargetId])
     };
 
-    applySigmaGraphState(graph, { adjacency, visibility, selectedNodeId: sharedTargetId, showLabels: false });
+    applySigmaGraphState(graph, { adjacency, visibility, selectedNodeId: null, showLabels: false });
 
     expect(graph.getNodeAttribute(sharedTargetId, "forceLabel")).toBe(true);
     expect(graph.nodes().every((id) => graph.getNodeAttribute(id, "label") === "")).toBe(true);
+  });
+
+  it("shows labels only for the selected node and direct connections while a node is selected", () => {
+    const selectedId = sharedTargetId;
+    const directParentId = "org.alpha:client:jar::1.0.0";
+    const directParentTwoId = "org.beta:service:jar::1.0.0";
+    const indirectId = "dev.example:demo:jar::1.0.0";
+    const adjacency = buildAdjacency(document);
+    const visibility: VisibilityState = {
+      visibleNodeIds: new Set(document.nodes.map((current) => current.id)),
+      visibleEdgeIds: new Set(document.edges.map((current) => current.id)),
+      matchingNodeIds: new Set()
+    };
+
+    for (const showLabels of [false, true]) {
+      const graph = toSigmaGraph(document, "force");
+
+      applySigmaGraphState(graph, { adjacency, visibility, selectedNodeId: selectedId, showLabels });
+
+      expect(graph.getNodeAttribute(selectedId, "label")).toBe("logging");
+      expect(graph.getNodeAttribute(directParentId, "label")).toBe("client");
+      expect(graph.getNodeAttribute(directParentTwoId, "label")).toBe("service");
+      expect(graph.getNodeAttribute(indirectId, "label")).toBe("");
+      expect(graph.getNodeAttribute(selectedId, "labelTextVisible")).toBe(true);
+      expect(graph.getNodeAttribute(directParentId, "labelTextVisible")).toBe(true);
+      expect(graph.getNodeAttribute(indirectId, "labelTextVisible")).toBe(false);
+      expect(graph.getNodeAttribute(selectedId, "forceLabel")).toBe(true);
+      expect(graph.getNodeAttribute(directParentId, "forceLabel")).toBe(true);
+      expect(graph.getNodeAttribute(indirectId, "forceLabel")).toBe(false);
+    }
   });
 
   it("stores independent badge visibility in node attributes", () => {
