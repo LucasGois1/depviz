@@ -169,7 +169,7 @@ svg {
   height: 19px;
 }
 
-.canvas-actions {
+.filter-actions {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -435,16 +435,16 @@ svg {
   background: var(--input-bg);
 }
 
-.canvas-actions .button {
+.filter-actions .button {
   flex: 0 0 auto;
 }
 
-.canvas-actions .button-outline {
+.filter-actions .button-outline {
   border-color: transparent;
   background: var(--control-bg);
 }
 
-.canvas-actions .button-outline:hover {
+.filter-actions .button-outline:hover {
   border-color: var(--border);
   background: var(--control-hover);
 }
@@ -544,40 +544,6 @@ svg {
   text-transform: uppercase;
 }
 
-.label-mode {
-  display: inline-flex;
-  height: 30px;
-  padding: 2px;
-  border-radius: 8px;
-  background: var(--panel-muted);
-}
-
-.label-mode button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 52px;
-  gap: 5px;
-  padding: 0 8px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--muted-strong);
-  font-size: 12px;
-  font-weight: 760;
-}
-
-.label-mode button[aria-pressed="true"] {
-  background: var(--panel-raised);
-  color: var(--text);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.32);
-}
-
-.label-mode svg {
-  width: 13px;
-  height: 13px;
-}
-
 .canvas-frame {
   position: relative;
   min-height: 0;
@@ -596,36 +562,124 @@ svg {
   box-shadow: inset 0 0 0 1px rgba(88, 166, 255, 0.08);
 }
 
-.canvas-status {
+.canvas-view-controls {
   position: absolute;
-  right: 12px;
-  bottom: 12px;
-  display: flex;
-  gap: 6px;
-  padding: 5px;
-  border: 1px solid var(--border);
+  bottom: 14px;
+  left: 14px;
+  z-index: 20;
+  display: grid;
+  width: min(360px, calc(100% - 28px));
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 9px 10px;
+  padding: 10px;
+  border: 1px solid rgba(65, 86, 111, 0.82);
   border-radius: 8px;
-  background: rgba(13, 20, 29, 0.9);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.34);
+  background: rgba(8, 13, 20, 0.88);
+  box-shadow:
+    0 14px 34px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(12px);
 }
 
-.canvas-status span {
-  padding: 4px 8px;
-  border-radius: 6px;
-  background: var(--panel-muted);
+.canvas-view-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted-strong);
+  font-size: 11px;
+  font-weight: 820;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.canvas-view-heading svg {
+  width: 14px;
+  height: 14px;
+  color: var(--accent-strong);
+}
+
+.canvas-view-layout {
+  display: inline-grid;
+  grid-template-columns: auto 126px;
+  align-items: center;
+  gap: 7px;
+  justify-self: end;
+}
+
+.canvas-view-layout > span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.canvas-view-layout .select-trigger {
+  width: 126px;
+  height: 30px;
+  border-color: rgba(65, 86, 111, 0.74);
+  background: rgba(13, 20, 29, 0.94);
+}
+
+.canvas-view-toggles {
+  display: flex;
+  min-width: 0;
+  gap: 6px;
+}
+
+.canvas-toggle {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  height: 31px;
+  min-width: 62px;
+  gap: 6px;
+  padding: 0 9px;
+  border: 1px solid rgba(65, 86, 111, 0.72);
+  border-radius: 7px;
+  background: rgba(17, 26, 36, 0.92);
   color: var(--muted-strong);
   font-size: 12px;
-  font-weight: 680;
+  font-weight: 760;
+  white-space: nowrap;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    color 140ms ease,
+    box-shadow 140ms ease;
 }
 
-.canvas-status .canvas-status-search {
-  background: rgba(251, 191, 36, 0.16);
-  color: #fde68a;
+.canvas-toggle svg {
+  width: 14px;
+  height: 14px;
 }
 
-.canvas-status .canvas-status-empty {
-  background: rgba(251, 113, 133, 0.15);
-  color: #fecdd3;
+.canvas-toggle[aria-pressed="true"] {
+  border-color: rgba(88, 166, 255, 0.64);
+  background: rgba(16, 42, 67, 0.95);
+  color: var(--text);
+  box-shadow: inset 0 -1px 0 rgba(140, 200, 255, 0.18);
+}
+
+.canvas-toggle:hover {
+  border-color: var(--border-strong);
+  background: var(--panel-muted);
+  color: var(--text);
+}
+
+.canvas-view-actions {
+  display: flex;
+  justify-self: end;
+  gap: 6px;
+}
+
+.canvas-view-actions .button {
+  width: 31px;
+  height: 31px;
+  border-color: rgba(65, 86, 111, 0.72);
+  background: rgba(13, 20, 29, 0.94);
 }
 
 .empty-canvas,
@@ -1522,7 +1576,7 @@ svg {
 .button:focus-visible,
 .input:focus-visible,
 .select-trigger:focus-visible,
-.label-mode button:focus-visible,
+.canvas-toggle:focus-visible,
 .tabs-trigger:focus-visible,
 .neighbor-list button:focus-visible,
 .route-step button:focus-visible {

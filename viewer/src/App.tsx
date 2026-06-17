@@ -4,10 +4,10 @@ import { buildVisibility, createFilterState, setOptionalMode, setScopeEnabled, s
 import { availableScopes, buildAdjacency, recommendedInitialLayout, shouldShowAllLabelsInitially } from "./graph";
 import { buildSearchSuggestions } from "./search";
 import type { DepvizDocument, FilterState, GraphNode, LayoutName, OptionalMode, SecurityFilterMode, UpdateFilterMode } from "./types";
+import { CanvasViewControls } from "./components/CanvasViewControls";
 import { GraphCanvas } from "./components/GraphCanvas";
 import { Sidebar } from "./components/Sidebar";
 import { Toolbar } from "./components/Toolbar";
-import { Button } from "./components/ui/button";
 
 const fallbackDocument: DepvizDocument = {
   schemaVersion: "empty",
@@ -43,6 +43,8 @@ export default function App() {
   const [layout, setLayout] = useState<LayoutName>(() => recommendedInitialLayout(documentData, normalizeLayout(documentData.viewerConfig.initialLayout)));
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [showLabels, setShowLabels] = useState(() => shouldShowAllLabelsInitially(documentData));
+  const [showVersionBadges, setShowVersionBadges] = useState(true);
+  const [showSecurityBadges, setShowSecurityBadges] = useState(true);
   const [viewportCommand, setViewportCommand] = useState<"fit" | "reset" | null>(null);
   const [commandNonce, setCommandNonce] = useState(0);
 
@@ -99,9 +101,7 @@ export default function App() {
         <Toolbar
           document={documentData}
           filters={filters}
-          layout={layout}
           scopes={scopes}
-          showLabels={showLabels}
           searchSuggestions={searchSuggestions}
           searchMatchCount={searchActive ? visibility.matchingNodeIds.size : 0}
           onSearchChange={updateSearch}
@@ -110,10 +110,6 @@ export default function App() {
           onOptionalModeChange={updateOptionalMode}
           onUpdateModeChange={updateUpdateMode}
           onSecurityModeChange={updateSecurityMode}
-          onLayoutChange={setLayout}
-          onShowLabelsChange={setShowLabels}
-          onFit={fitGraph}
-          onReset={resetGraph}
           onClearFilters={clearFilters}
         />
         <div className="canvas-frame">
@@ -130,21 +126,28 @@ export default function App() {
               selectedNodeId={selectedNodeId}
               visibility={visibility}
               showLabels={showLabels}
+              showVersionBadges={showVersionBadges}
+              showSecurityBadges={showSecurityBadges}
               searchActive={searchActive}
               viewportCommand={viewportCommand}
               commandNonce={commandNonce}
               onSelectNode={selectNode}
             />
           )}
-          <div className="canvas-status" aria-live="polite">
-            <span>{visibility.visibleNodeIds.size} nodes visible</span>
-            <span>{visibility.visibleEdgeIds.size} edges visible</span>
-            {searchActive ? (
-              <span className={visibility.matchingNodeIds.size > 0 ? "canvas-status-search" : "canvas-status-empty"}>
-                {visibility.matchingNodeIds.size} {visibility.matchingNodeIds.size === 1 ? "match" : "matches"}
-              </span>
-            ) : null}
-          </div>
+          {documentData.nodes.length > 0 ? (
+            <CanvasViewControls
+              layout={layout}
+              showLabels={showLabels}
+              showVersionBadges={showVersionBadges}
+              showSecurityBadges={showSecurityBadges}
+              onLayoutChange={setLayout}
+              onShowLabelsChange={setShowLabels}
+              onShowVersionBadgesChange={setShowVersionBadges}
+              onShowSecurityBadgesChange={setShowSecurityBadges}
+              onFit={fitGraph}
+              onReset={resetGraph}
+            />
+          ) : null}
         </div>
       </section>
       <Sidebar

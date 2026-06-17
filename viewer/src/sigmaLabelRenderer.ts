@@ -15,6 +15,7 @@ interface VersionBadge {
 
 interface LabelBadge extends VersionBadge {
   kind: "security" | "version";
+  shape: "octagon" | "pill";
 }
 
 type VersionBadgeTone = SigmaVersionUpdateType | "unavailable";
@@ -24,7 +25,11 @@ export function labelSideForCanvasPosition(x: number, canvasWidth: number): "lef
 }
 
 export const drawDependencyNodeLabel: NodeLabelDrawingFunction<SigmaNodeAttributes, SigmaEdgeAttributes> = (context, data, settings) => {
-  if (!data.label) {
+  const badges = badgesForNode(data as Partial<SigmaNodeAttributes>);
+  const rawLabel = String(data.label ?? "").trim();
+  const label = data.labelTextVisible === false ? "" : rawLabel;
+
+  if (!rawLabel && badges.length === 0) {
     return;
   }
 
@@ -34,25 +39,27 @@ export const drawDependencyNodeLabel: NodeLabelDrawingFunction<SigmaNodeAttribut
   const color = settings.labelColor.attribute
     ? String((data as Record<string, unknown>)[settings.labelColor.attribute] ?? settings.labelColor.color ?? "#dbeafe")
     : settings.labelColor.color;
-  const label = String(data.label);
 
   context.font = `${weight} ${size}px ${font}`;
 
   const textWidth = context.measureText(label).width;
   const side = labelSideForCanvasPosition(data.x, context.canvas.width);
-  const x = side === "left" ? data.x - data.size - 3 - textWidth : data.x + data.size + 3;
+  const badgeWidth = !label && badges.length > 0 ? badges.reduce((sum, badge) => sum + estimatedBadgeWidth(context, badge, size, font, weight), 0) : 0;
+  const badgeGap = !label && badges.length > 1 ? (badges.length - 1) * 6 : 0;
+  const x = side === "left" ? data.x - data.size - 3 - Math.max(textWidth, badgeWidth + badgeGap) : data.x + data.size + 3;
   const y = data.y + size / 3;
-  const badges = badgesForNode(data as Partial<SigmaNodeAttributes>);
 
   context.lineJoin = "round";
   context.lineWidth = 4;
-  context.strokeStyle = "rgba(6, 12, 20, 0.82)";
-  context.strokeText(label, x, y);
-  context.fillStyle = color ?? "#dbeafe";
-  context.fillText(label, x, y);
+  if (label) {
+    context.strokeStyle = "rgba(6, 12, 20, 0.82)";
+    context.strokeText(label, x, y);
+    context.fillStyle = color ?? "#dbeafe";
+    context.fillText(label, x, y);
+  }
 
   if (badges.length > 0) {
-    let xOffset = 6;
+    let xOffset = label ? 6 : 0;
     for (const badge of badges) {
       xOffset = drawBadge(context, {
         badge,
@@ -144,15 +151,28 @@ export function securityBadgeText(insight: Pick<SecurityInsight, "maxSeverity" |
 }
 
 export function badgesForNode(
-  node: Pick<Partial<SigmaNodeAttributes>, "securityBadge" | "securitySeverity" | "updateBadge" | "updateType" | "versionStatus">
+  node: Pick<
+    Partial<SigmaNodeAttributes>,
+    | "securityBadge"
+    | "securityBadgeVisible"
+    | "securitySeverity"
+    | "updateBadge"
+    | "updateType"
+    | "versionBadgeVisible"
+    | "versionStatus"
+  >
 ): LabelBadge[] {
   const securityBadge = securityBadgeForNode(node);
   const versionBadge = versionBadgeForNode(node);
-  return [securityBadge, versionBadge ? { ...versionBadge, kind: "version" as const } : null].filter((badge): badge is LabelBadge => Boolean(badge));
+  return [securityBadge, versionBadge ? { ...versionBadge, kind: "version" as const, shape: "pill" as const } : null].filter(
+    (badge): badge is LabelBadge => Boolean(badge)
+  );
 }
 
-export function versionBadgeForNode(node: Pick<Partial<SigmaNodeAttributes>, "updateBadge" | "updateType" | "versionStatus">): VersionBadge | null {
-  if (!node.updateBadge || !node.updateType) {
+export function versionBadgeForNode(
+  node: Pick<Partial<SigmaNodeAttributes>, "updateBadge" | "updateType" | "versionBadgeVisible" | "versionStatus">
+): VersionBadge | null {
+  if (node.versionBadgeVisible === false || !node.updateBadge || !node.updateType) {
     return null;
   }
   const badgeTone = node.versionStatus === "unavailable" ? "unavailable" : node.updateType;
@@ -162,13 +182,16 @@ export function versionBadgeForNode(node: Pick<Partial<SigmaNodeAttributes>, "up
   };
 }
 
-function securityBadgeForNode(node: Pick<Partial<SigmaNodeAttributes>, "securityBadge" | "securitySeverity">): LabelBadge | null {
-  if (!node.securityBadge || !node.securitySeverity) {
+function securityBadgeForNode(
+  node: Pick<Partial<SigmaNodeAttributes>, "securityBadge" | "securityBadgeVisible" | "securitySeverity">
+): LabelBadge | null {
+  if (node.securityBadgeVisible === false || !node.securityBadge || !node.securitySeverity) {
     return null;
   }
   return {
     text: node.securityBadge,
     kind: "security",
+    shape: "octagon",
     color: badgeColorForSeverity(node.securitySeverity)
   };
 }
@@ -201,18 +224,22 @@ function drawBadge(
 ): number {
   const { badge, font, labelWidth, labelX, labelY, size, weight, xOffset } = params;
   const badgeFontSize = Math.max(9, size - 2);
-  const horizontalPadding = 6;
+  const horizontalPadding = badge.shape === "octagon" ? 7 : 6;
   const height = Math.max(16, badgeFontSize + 7);
   const gap = 6;
 
   context.font = `${weight} ${badgeFontSize}px ${font}`;
-  const badgeWidth = Math.max(18, context.measureText(badge.text).width + horizontalPadding * 2);
+  const badgeWidth = Math.max(badge.shape === "octagon" ? 22 : 18, context.measureText(badge.text).width + horizontalPadding * 2);
   const x = labelX + labelWidth + xOffset;
   const y = labelY - height + 4;
   const radius = height / 2;
 
   context.beginPath();
-  roundedRect(context, x, y, badgeWidth, height, radius);
+  if (badge.shape === "octagon") {
+    octagon(context, x, y, badgeWidth, height);
+  } else {
+    roundedRect(context, x, y, badgeWidth, height, radius);
+  }
   context.fillStyle = badge.color.background;
   context.fill();
   context.strokeStyle = badge.color.border;
@@ -225,6 +252,28 @@ function drawBadge(
   context.textAlign = "start";
   context.textBaseline = "alphabetic";
   return xOffset + badgeWidth + gap;
+}
+
+function estimatedBadgeWidth(context: CanvasRenderingContext2D, badge: LabelBadge, size: number, font: string, weight: string): number {
+  const badgeFontSize = Math.max(9, size - 2);
+  const horizontalPadding = badge.shape === "octagon" ? 7 : 6;
+
+  context.font = `${weight} ${badgeFontSize}px ${font}`;
+  return Math.max(badge.shape === "octagon" ? 22 : 18, context.measureText(badge.text).width + horizontalPadding * 2);
+}
+
+function octagon(context: CanvasRenderingContext2D, x: number, y: number, width: number, height: number): void {
+  const cut = Math.min(width, height) * 0.38;
+
+  context.moveTo(x + cut, y);
+  context.lineTo(x + width - cut, y);
+  context.lineTo(x + width, y + cut);
+  context.lineTo(x + width, y + height - cut);
+  context.lineTo(x + width - cut, y + height);
+  context.lineTo(x + cut, y + height);
+  context.lineTo(x, y + height - cut);
+  context.lineTo(x, y + cut);
+  context.closePath();
 }
 
 function roundedRect(context: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number): void {

@@ -19,6 +19,8 @@ interface GraphCanvasProps {
   selectedNodeId: string | null;
   visibility: VisibilityState;
   showLabels: boolean;
+  showVersionBadges: boolean;
+  showSecurityBadges: boolean;
   searchActive: boolean;
   viewportCommand: "fit" | "reset" | null;
   commandNonce: number;
@@ -40,6 +42,8 @@ export function GraphCanvas({
   selectedNodeId,
   visibility,
   showLabels,
+  showVersionBadges,
+  showSecurityBadges,
   searchActive,
   viewportCommand,
   commandNonce,
@@ -65,7 +69,7 @@ export function GraphCanvas({
       return undefined;
     }
 
-    applySigmaGraphState(graph, { adjacency, selectedNodeId, showLabels, visibility, searchActive });
+    applySigmaGraphState(graph, { adjacency, selectedNodeId, showLabels, showVersionBadges, showSecurityBadges, visibility, searchActive });
 
     const renderer: DepvizSigma = new Sigma(graph, containerRef.current, sigmaRendererSettings);
 
@@ -77,18 +81,21 @@ export function GraphCanvas({
     });
 
     rendererRef.current = renderer;
-    renderer.getCamera().animatedReset({ duration: 220 });
+    const fitFrame = window.requestAnimationFrame(() => {
+      fitVisibleGraph(renderer, graph);
+    });
 
     return () => {
+      window.cancelAnimationFrame(fitFrame);
       renderer.kill();
       rendererRef.current = null;
     };
   }, [graph]);
 
   useEffect(() => {
-    applySigmaGraphState(graph, { adjacency, selectedNodeId, showLabels, visibility, searchActive });
+    applySigmaGraphState(graph, { adjacency, selectedNodeId, showLabels, showVersionBadges, showSecurityBadges, visibility, searchActive });
     rendererRef.current?.refresh();
-  }, [adjacency, graph, searchActive, selectedNodeId, showLabels, visibility]);
+  }, [adjacency, graph, searchActive, selectedNodeId, showLabels, showSecurityBadges, showVersionBadges, visibility]);
 
   useEffect(() => {
     const renderer = rendererRef.current;
@@ -103,12 +110,12 @@ export function GraphCanvas({
 
     if (viewportCommand === "reset") {
       applySigmaLayout(graph, layout);
-      applySigmaGraphState(graph, { adjacency, selectedNodeId, showLabels, visibility, searchActive });
+      applySigmaGraphState(graph, { adjacency, selectedNodeId, showLabels, showVersionBadges, showSecurityBadges, visibility, searchActive });
       renderer.refresh();
     }
 
     void renderer.getCamera().animatedReset({ duration: FIT_DURATION_MS });
-  }, [adjacency, commandNonce, graph, layout, searchActive, selectedNodeId, showLabels, viewportCommand, visibility]);
+  }, [adjacency, commandNonce, graph, layout, searchActive, selectedNodeId, showLabels, showSecurityBadges, showVersionBadges, viewportCommand, visibility]);
 
   return <div ref={containerRef} className="graph-canvas sigma-canvas" aria-label="Dependency graph canvas" />;
 }

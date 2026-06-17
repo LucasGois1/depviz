@@ -11,6 +11,7 @@ export interface SigmaNodeAttributes {
   id: string;
   label: string;
   baseLabel: string;
+  labelTextVisible: boolean;
   coordinate: string;
   groupId: string;
   artifactId: string;
@@ -37,8 +38,10 @@ export interface SigmaNodeAttributes {
   versionStatus?: VersionInsight["status"];
   updateType?: SigmaVersionUpdateType;
   updateBadge?: string;
+  versionBadgeVisible: boolean;
   securitySeverity?: SecuritySeverity;
   securityBadge?: string;
+  securityBadgeVisible: boolean;
   zIndex: number;
 }
 
@@ -79,6 +82,8 @@ export interface SigmaGraphStateParams {
   visibility: VisibilityState;
   selectedNodeId: string | null;
   showLabels: boolean;
+  showVersionBadges?: boolean;
+  showSecurityBadges?: boolean;
   searchActive?: boolean;
 }
 
@@ -124,6 +129,8 @@ export function applySigmaLayout(graph: SigmaDependencyGraph, layout: LayoutName
 
 export function applySigmaGraphState(graph: SigmaDependencyGraph, params: SigmaGraphStateParams): void {
   const { adjacency, selectedNodeId, showLabels, visibility } = params;
+  const showVersionBadges = params.showVersionBadges ?? true;
+  const showSecurityBadges = params.showSecurityBadges ?? true;
   const selectedNeighborhood = selectedNodeId ? closedNeighborhood(adjacency, selectedNodeId) : null;
   const denseGraph = graph.order >= DENSE_LABEL_THRESHOLD;
   const searchActive = params.searchActive === true && visibility.matchingNodeIds.size > 0;
@@ -140,14 +147,17 @@ export function applySigmaGraphState(graph: SigmaDependencyGraph, params: SigmaG
     const versionLabel = attributes.versionStatus === "outdated" || attributes.versionStatus === "unavailable";
     const securityLabel = Boolean(attributes.securityBadge);
     const forceLabel = selected || matched || keyLabel || versionLabel || securityLabel;
-    const labelVisible = showLabels || forceLabel;
+    const visibleBadge = (showVersionBadges && Boolean(attributes.updateBadge)) || (showSecurityBadges && Boolean(attributes.securityBadge));
 
     graph.mergeNodeAttributes(nodeId, {
       hidden: !visible,
       highlighted: selected || matched,
       color: dimmed ? "rgba(71, 85, 105, 0.3)" : matched && !selected ? "#fbbf24" : searchContext ? searchContextNodeColor(attributes) : attributes.baseColor,
-      label: labelVisible ? attributes.baseLabel : "",
+      label: showLabels || visibleBadge ? attributes.baseLabel : "",
+      labelTextVisible: showLabels,
       forceLabel,
+      versionBadgeVisible: showVersionBadges,
+      securityBadgeVisible: showSecurityBadges,
       size: selected ? Math.max(attributes.baseSize + 3, 12) : matched ? Math.max(attributes.baseSize + 2.2, 10.5) : attributes.baseSize,
       zIndex: selected ? 30 : matched ? 24 : attributes.shared ? 12 : attributes.root ? 20 : 1
     });
@@ -221,6 +231,7 @@ function toSigmaNodeAttributes(node: GraphNode, fanIn: number): SigmaNodeAttribu
     id: node.id,
     label: canvasLabel,
     baseLabel: canvasLabel,
+    labelTextVisible: true,
     coordinate: node.coordinate,
     groupId: node.groupId,
     artifactId: node.artifactId,
@@ -247,8 +258,10 @@ function toSigmaNodeAttributes(node: GraphNode, fanIn: number): SigmaNodeAttribu
     ...(versionStatus ? { versionStatus } : {}),
     ...(node.versionInsight ? { updateType } : {}),
     ...(updateBadge ? { updateBadge } : {}),
+    versionBadgeVisible: true,
     ...(securitySeverity ? { securitySeverity } : {}),
     ...(securityBadge ? { securityBadge } : {}),
+    securityBadgeVisible: true,
     zIndex: node.root ? 20 : shared ? 12 : 1
   };
 }

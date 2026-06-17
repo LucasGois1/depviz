@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
-import { Eye, EyeOff, FilterX, Maximize2, Network, RotateCcw, Search, X } from "lucide-react";
+import { FilterX, Network, Search, X } from "lucide-react";
 import { scopeIsEnabled } from "../filtering";
-import { layoutDisplayName } from "../graph";
 import { nextSuggestionIndex, type SearchSuggestion } from "../search";
-import type { DepvizDocument, FilterState, LayoutName, OptionalMode, SecurityFilterMode, UpdateFilterMode, VersionSummary } from "../types";
+import type { DepvizDocument, FilterState, OptionalMode, SecurityFilterMode, UpdateFilterMode, VersionSummary } from "../types";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Select, SelectItem } from "./ui/select";
@@ -11,9 +10,7 @@ import { Select, SelectItem } from "./ui/select";
 interface ToolbarProps {
   document: DepvizDocument;
   filters: FilterState;
-  layout: LayoutName;
   scopes: string[];
-  showLabels: boolean;
   searchSuggestions: SearchSuggestion[];
   searchMatchCount: number;
   onSearchChange: (search: string) => void;
@@ -22,21 +19,13 @@ interface ToolbarProps {
   onOptionalModeChange: (mode: OptionalMode) => void;
   onUpdateModeChange: (mode: UpdateFilterMode) => void;
   onSecurityModeChange: (mode: SecurityFilterMode) => void;
-  onLayoutChange: (layout: LayoutName) => void;
-  onShowLabelsChange: (showLabels: boolean) => void;
-  onFit: () => void;
-  onReset: () => void;
   onClearFilters: () => void;
 }
-
-const layouts: LayoutName[] = ["breadthfirst", "force", "circle", "concentric"];
 
 export function Toolbar({
   document,
   filters,
-  layout,
   scopes,
-  showLabels,
   searchSuggestions,
   searchMatchCount,
   onSearchChange,
@@ -45,10 +34,6 @@ export function Toolbar({
   onOptionalModeChange,
   onUpdateModeChange,
   onSecurityModeChange,
-  onLayoutChange,
-  onShowLabelsChange,
-  onFit,
-  onReset,
   onClearFilters
 }: ToolbarProps) {
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
@@ -221,13 +206,7 @@ export function Toolbar({
           ) : null}
         </div>
 
-        <div className="canvas-actions" aria-label="Canvas actions">
-          <Button variant="outline" size="icon" onClick={onFit} title="Fit graph" aria-label="Fit graph">
-            <Maximize2 aria-hidden="true" />
-          </Button>
-          <Button variant="outline" size="icon" onClick={onReset} title="Reset layout" aria-label="Reset layout">
-            <RotateCcw aria-hidden="true" />
-          </Button>
+        <div className="filter-actions" aria-label="Filter actions">
           <Button variant="ghost" size="icon" onClick={onClearFilters} title="Clear filters" aria-label="Clear filters">
             <FilterX aria-hidden="true" />
           </Button>
@@ -295,32 +274,6 @@ export function Toolbar({
           </section>
         ) : null}
 
-        <section className="command-group">
-          <div className="control-field">
-            <span>View</span>
-            <Select value={layout} onValueChange={(value) => onLayoutChange(value as LayoutName)} label="Graph layout">
-              {layouts.map((option) => (
-                <SelectItem key={option} value={option}>
-                  {layoutDisplayName(option)}
-                </SelectItem>
-              ))}
-            </Select>
-          </div>
-        </section>
-
-        <section className="command-group">
-          <span className="command-label">Labels</span>
-          <div className="label-mode" aria-label="Label density">
-            <button type="button" aria-pressed={!showLabels} onClick={() => onShowLabelsChange(false)} title="Show key labels only">
-              <EyeOff aria-hidden="true" />
-              Key
-            </button>
-            <button type="button" aria-pressed={showLabels} onClick={() => onShowLabelsChange(true)} title="Show all labels">
-              <Eye aria-hidden="true" />
-              All
-            </button>
-          </div>
-        </section>
       </div>
     </header>
   );
