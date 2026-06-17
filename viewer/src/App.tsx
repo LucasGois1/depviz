@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { AlertTriangle } from "lucide-react";
 import { buildVisibility, createFilterState, setOptionalMode, setScopeEnabled, setSecurityMode, setUpdateMode, toggleCollapsed } from "./filtering";
 import { availableScopes, buildAdjacency, recommendedInitialLayout, shouldShowAllLabelsInitially } from "./graph";
+import { buildSearchSuggestions } from "./search";
 import type { DepvizDocument, FilterState, GraphNode, LayoutName, OptionalMode, SecurityFilterMode, UpdateFilterMode } from "./types";
 import { GraphCanvas } from "./components/GraphCanvas";
 import { Sidebar } from "./components/Sidebar";
@@ -49,6 +50,8 @@ export default function App() {
   const adjacency = useMemo(() => buildAdjacency(documentData), [documentData]);
   const scopes = useMemo(() => availableScopes(documentData), [documentData]);
   const visibility = useMemo(() => buildVisibility(documentData, filters), [documentData, filters]);
+  const searchActive = Boolean(filters.search.trim());
+  const searchSuggestions = useMemo(() => buildSearchSuggestions(documentData, visibility, filters.search), [documentData, filters.search, visibility]);
   const selectedNode = selectedNodeId ? nodeById.get(selectedNodeId) ?? null : null;
 
   const selectNode = useCallback((nodeId: string | null) => {
@@ -99,7 +102,10 @@ export default function App() {
           layout={layout}
           scopes={scopes}
           showLabels={showLabels}
+          searchSuggestions={searchSuggestions}
+          searchMatchCount={searchActive ? visibility.matchingNodeIds.size : 0}
           onSearchChange={updateSearch}
+          onSearchSuggestionSelect={selectNode}
           onScopeChange={updateScope}
           onOptionalModeChange={updateOptionalMode}
           onUpdateModeChange={updateUpdateMode}
@@ -124,6 +130,7 @@ export default function App() {
               selectedNodeId={selectedNodeId}
               visibility={visibility}
               showLabels={showLabels}
+              searchActive={searchActive}
               viewportCommand={viewportCommand}
               commandNonce={commandNonce}
               onSelectNode={selectNode}
@@ -132,7 +139,11 @@ export default function App() {
           <div className="canvas-status" aria-live="polite">
             <span>{visibility.visibleNodeIds.size} nodes visible</span>
             <span>{visibility.visibleEdgeIds.size} edges visible</span>
-            {filters.search.trim() ? <span>{visibility.matchingNodeIds.size} matches</span> : null}
+            {searchActive ? (
+              <span className={visibility.matchingNodeIds.size > 0 ? "canvas-status-search" : "canvas-status-empty"}>
+                {visibility.matchingNodeIds.size} {visibility.matchingNodeIds.size === 1 ? "match" : "matches"}
+              </span>
+            ) : null}
           </div>
         </div>
       </section>

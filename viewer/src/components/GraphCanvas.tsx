@@ -19,6 +19,7 @@ interface GraphCanvasProps {
   selectedNodeId: string | null;
   visibility: VisibilityState;
   showLabels: boolean;
+  searchActive: boolean;
   viewportCommand: "fit" | "reset" | null;
   commandNonce: number;
   onSelectNode: (nodeId: string | null) => void;
@@ -39,6 +40,7 @@ export function GraphCanvas({
   selectedNodeId,
   visibility,
   showLabels,
+  searchActive,
   viewportCommand,
   commandNonce,
   onSelectNode
@@ -63,7 +65,7 @@ export function GraphCanvas({
       return undefined;
     }
 
-    applySigmaGraphState(graph, { adjacency, selectedNodeId, showLabels, visibility });
+    applySigmaGraphState(graph, { adjacency, selectedNodeId, showLabels, visibility, searchActive });
 
     const renderer: DepvizSigma = new Sigma(graph, containerRef.current, sigmaRendererSettings);
 
@@ -84,9 +86,9 @@ export function GraphCanvas({
   }, [graph]);
 
   useEffect(() => {
-    applySigmaGraphState(graph, { adjacency, selectedNodeId, showLabels, visibility });
+    applySigmaGraphState(graph, { adjacency, selectedNodeId, showLabels, visibility, searchActive });
     rendererRef.current?.refresh();
-  }, [adjacency, graph, selectedNodeId, showLabels, visibility]);
+  }, [adjacency, graph, searchActive, selectedNodeId, showLabels, visibility]);
 
   useEffect(() => {
     const renderer = rendererRef.current;
@@ -101,12 +103,12 @@ export function GraphCanvas({
 
     if (viewportCommand === "reset") {
       applySigmaLayout(graph, layout);
-      applySigmaGraphState(graph, { adjacency, selectedNodeId, showLabels, visibility });
+      applySigmaGraphState(graph, { adjacency, selectedNodeId, showLabels, visibility, searchActive });
       renderer.refresh();
     }
 
     void renderer.getCamera().animatedReset({ duration: FIT_DURATION_MS });
-  }, [adjacency, commandNonce, graph, layout, selectedNodeId, showLabels, viewportCommand, visibility]);
+  }, [adjacency, commandNonce, graph, layout, searchActive, selectedNodeId, showLabels, viewportCommand, visibility]);
 
   return <div ref={containerRef} className="graph-canvas sigma-canvas" aria-label="Dependency graph canvas" />;
 }

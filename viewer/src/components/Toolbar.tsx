@@ -1,6 +1,8 @@
-import { Eye, EyeOff, FilterX, Maximize2, Network, RotateCcw, Search } from "lucide-react";
+import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
+import { Eye, EyeOff, FilterX, Maximize2, Network, RotateCcw, Search, X } from "lucide-react";
 import { scopeIsEnabled } from "../filtering";
 import { layoutDisplayName } from "../graph";
+import { nextSuggestionIndex, type SearchSuggestion } from "../search";
 import type { DepvizDocument, FilterState, LayoutName, OptionalMode, SecurityFilterMode, UpdateFilterMode, VersionSummary } from "../types";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -12,7 +14,10 @@ interface ToolbarProps {
   layout: LayoutName;
   scopes: string[];
   showLabels: boolean;
+  searchSuggestions: SearchSuggestion[];
+  searchMatchCount: number;
   onSearchChange: (search: string) => void;
+  onSearchSuggestionSelect: (nodeId: string) => void;
   onScopeChange: (scope: string, enabled: boolean) => void;
   onOptionalModeChange: (mode: OptionalMode) => void;
   onUpdateModeChange: (mode: UpdateFilterMode) => void;
@@ -32,7 +37,10 @@ export function Toolbar({
   layout,
   scopes,
   showLabels,
+  searchSuggestions,
+  searchMatchCount,
   onSearchChange,
+  onSearchSuggestionSelect,
   onScopeChange,
   onOptionalModeChange,
   onUpdateModeChange,
@@ -43,6 +51,68 @@ export function Toolbar({
   onReset,
   onClearFilters
 }: ToolbarProps) {
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
+  const searchQuery = filters.search.trim();
+  const searchActive = searchQuery.length > 0;
+  const hasSuggestions = searchSuggestions.length > 0;
+  const activeSuggestion = activeSuggestionIndex >= 0 ? searchSuggestions[activeSuggestionIndex] : null;
+  const searchShellClassName = useMemo(
+    () =>
+      [
+        "search-shell",
+        searchActive ? "is-searching" : "",
+        suggestionsOpen && searchActive ? "is-open" : "",
+        searchActive && searchMatchCount === 0 ? "has-no-results" : ""
+      ]
+        .filter(Boolean)
+        .join(" "),
+    [searchActive, searchMatchCount, suggestionsOpen]
+  );
+
+  useEffect(() => {
+    setActiveSuggestionIndex(searchSuggestions.length > 0 ? 0 : -1);
+  }, [searchQuery, searchSuggestions.length]);
+
+  const selectSuggestion = (suggestion: SearchSuggestion) => {
+    onSearchSuggestionSelect(suggestion.nodeId);
+    setSuggestionsOpen(false);
+  };
+
+  const handleSearchKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      setSuggestionsOpen(searchActive);
+      setActiveSuggestionIndex((current) => nextSuggestionIndex(current, searchSuggestions.length, 1));
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      setSuggestionsOpen(searchActive);
+      setActiveSuggestionIndex((current) => nextSuggestionIndex(current, searchSuggestions.length, -1));
+      return;
+    }
+
+    if (event.key === "Enter" && suggestionsOpen && hasSuggestions) {
+      event.preventDefault();
+      selectSuggestion(activeSuggestion ?? searchSuggestions[0]);
+      return;
+    }
+
+    if (event.key === "Escape") {
+      if (suggestionsOpen) {
+        event.preventDefault();
+        setSuggestionsOpen(false);
+        return;
+      }
+      if (searchActive) {
+        event.preventDefault();
+        onSearchChange("");
+      }
+    }
+  };
+
   return (
     <header className="toolbar">
       <div className="toolbar-primary">
@@ -58,15 +128,98 @@ export function Toolbar({
           </div>
         </div>
 
-        <label className="search-box">
-          <Search aria-hidden="true" />
-          <Input
-            value={filters.search}
-            onChange={(event) => onSearchChange(event.target.value)}
-            placeholder="Search coordinates, scope, version..."
-            aria-label="Search dependency graph"
-          />
-        </label>
+        <div
+          className={searchShellClassName}
+          onBlur={(event) => {
+            const nextFocusedElement = event.relatedTarget instanceof Node ? event.relatedTarget : null;
+            if (!nextFocusedElement || !event.currentTarget.contains(nextFocusedElement)) {
+              setSuggestionsOpen(false);
+            }
+          }}
+        >
+          <div className="search-box">
+            <Search aria-hidden="true" />
+            <Input
+              value={filters.search}
+              onChange={(event) => {
+                onSearchChange(event.target.value);
+                setSuggestionsOpen(Boolean(event.target.value.trim()));
+              }}
+              onFocus={() => setSuggestionsOpen(searchActive)}
+              onKeyDown={handleSearchKeyDown}
+              placeholder="Search artifact, group, scope, version..."
+              aria-label="Search dependency graph"
+              role="combobox"
+              aria-expanded={suggestionsOpen && searchActive}
+              aria-controls="dependency-search-suggestions"
+              aria-activedescendant={activeSuggestion ? `dependency-search-suggestion-${activeSuggestionIndex}` : undefined}
+              autoComplete="off"
+            />
+            {searchActive ? (
+              <span className="search-live-indicator" aria-label="Search is filtering live">
+                live
+              </span>
+            ) : null}
+            {searchActive ? <span className="search-count">{searchMatchCount === 1 ? "1 match" : `${searchMatchCount} matches`}</span> : null}
+            {searchActive ? (
+              <button
+                className="search-clear"
+                type="button"
+                onClick={() => {
+                  onSearchChange("");
+                  setSuggestionsOpen(false);
+                }}
+                aria-label="Clear search"
+                title="Clear search"
+              >
+                <X aria-hidden="true" />
+              </button>
+            ) : null}
+          </div>
+
+          {searchActive && suggestionsOpen ? (
+            <div className="search-popover" id="dependency-search-suggestions" role="listbox" aria-label="Search suggestions">
+              <div className="search-popover-header">
+                <span>{searchMatchCount === 1 ? "1 dependency match" : `${searchMatchCount} dependency matches`}</span>
+                <span>Enter selects</span>
+              </div>
+              {hasSuggestions ? (
+                searchSuggestions.map((suggestion, index) => (
+                  <button
+                    className="search-suggestion"
+                    id={`dependency-search-suggestion-${index}`}
+                    key={suggestion.nodeId}
+                    type="button"
+                    role="option"
+                    aria-selected={activeSuggestionIndex === index}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onMouseEnter={() => setActiveSuggestionIndex(index)}
+                    onClick={() => selectSuggestion(suggestion)}
+                  >
+                    <span className="search-suggestion-main">
+                      <strong>
+                        <HighlightedQuery text={suggestion.artifactId} query={searchQuery} />
+                      </strong>
+                      <span>{suggestion.description}</span>
+                    </span>
+                    <span className="search-suggestion-badges" aria-hidden="true">
+                      {suggestion.badges.map((badge) => (
+                        <span className={`search-badge search-badge-${badge.tone}`} key={`${suggestion.nodeId}-${badge.label}`}>
+                          {badge.label}
+                        </span>
+                      ))}
+                    </span>
+                  </button>
+                ))
+              ) : (
+                <div className="search-empty" role="status">
+                  <strong>No dependency matches</strong>
+                  <span>Try an artifact, group id, scope, classifier, or version.</span>
+                </div>
+              )}
+            </div>
+          ) : null}
+        </div>
 
         <div className="canvas-actions" aria-label="Canvas actions">
           <Button variant="outline" size="icon" onClick={onFit} title="Fit graph" aria-label="Fit graph">
@@ -175,4 +328,20 @@ export function Toolbar({
 
 function updateLabel(label: string, summary: VersionSummary, key: keyof Pick<VersionSummary, "outdated" | "major" | "minor" | "patch" | "unknown" | "unavailable">) {
   return `${label} (${summary[key]})`;
+}
+
+function HighlightedQuery({ text, query }: { text: string; query: string }) {
+  const start = text.toLowerCase().indexOf(query.toLowerCase());
+  if (!query || start < 0) {
+    return <>{text}</>;
+  }
+
+  const end = start + query.length;
+  return (
+    <>
+      {text.slice(0, start)}
+      <mark>{text.slice(start, end)}</mark>
+      {text.slice(end)}
+    </>
+  );
 }
